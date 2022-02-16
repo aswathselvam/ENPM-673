@@ -15,3 +15,6 @@ chmod +x ./setup.sh
 ```
 ./run.sh
 ```
+
+### Output
+![Image](output.png)
