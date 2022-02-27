@@ -66,7 +66,7 @@ def main():
     
     #center of mask 
     centre = (mask.shape[0]//2,mask.shape[1]//2)
-    radius = 10
+    radius = 30
 
     #Fill the circle with zeros
     mask_value = 0
@@ -104,12 +104,12 @@ def main():
         Area_List.append(cv2.contourArea(c))
     i = np.argmax(np.array(Area_List))
     rect = cv2.boundingRect(contours[i])
-    print("Area List: ", i)
     x,y,w,h = rect
     margin = 20
     # get the AR Tag with white space with 10pixel pad margin
     AR_tag = read_image[y-margin:y+h+margin,x-margin:x+w+margin]  
-    
+    cv2.imshow("AR code Localized", AR_tag)
+
     # find the contour of the AR block inside the Tag with  white space 
     _, binary = cv2.threshold(cv2.cvtColor(AR_tag, cv2.COLOR_BGR2GRAY), 240, 255, cv2.THRESH_BINARY)
     contours, hierarchy = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -120,32 +120,43 @@ def main():
 
     print("Number of contours found: ", len(contours))
 
-    AR_contour = contours[-1] # get the AR's contour
+    #Get AR Tags black border, -1 index has the corners of A4 size sheet paper. 
+    AR_contour = contours[-2] 
     # print("Contours detected are: ",contours)
     # get the corresponding corner.
     AR_corners = cv2.approxPolyDP(AR_contour,0.07*cv2.arcLength(AR_contour,True),True)
     # AR_corners = cv2.goodFeaturesToTrack(binary, 4, 0.5, 50)
     AR_corners_img = cv2.cvtColor(binary,cv2.COLOR_GRAY2RGB)
+    
+    #Violet, Blue, Green, Yellow
+    cornerpts_color_map=[(86, 50, 168), (15, 165, 219), (29, 219, 15), (219, 216, 15)]
+    count=0
     for corner in AR_corners:
         x,y = corner.ravel()
-        cv2.circle(AR_corners_img,(int(x),int(y)),5,(36,255,12),-1)
-
-    print("AR Corners: ",AR_corners)
-    cv2.drawContours(AR_corners_img, AR_corners, -1, (0, 0, 255), 3)
-    cv2.imshow("Corners from image",AR_corners_img)
-    size = 10  #read_image.shape[0]
+        cv2.circle(AR_corners_img,(int(x),int(y)),6,cornerpts_color_map[count],5)
+        count+=1
+        if count>=4:
+            print("Error: More than 4 corner points detected!!")
+            break
     
+    print("AR Corners coordinates: ",AR_corners)
+    cv2.drawContours(AR_corners_img, AR_corners, -1, (0, 0, 255), 3)
+    cv2.imshow("Corners of AR Code",AR_corners_img)
+    size = 50  #read_image.shape[0]
+    side = 10
     destination_points = np.array([[0,0],[size,0],[size,size],[0,size]]).reshape(-1,1,2)
-    H = computeHomography(np.float32(AR_corners), np.float32(destination_points))
+    # H = computeHomography(np.float32(AR_corners), np.float32(destination_points))
+    H,mask = cv2.findHomography(np.float32(AR_corners), np.float32(destination_points))
     
     # warp the AR from the image plane to custom square plane like Bird's eye view representation. 
     imOut = np.zeros((size,size,3),dtype = np.uint8)
     AR_Tag_focused = warp(AR_tag, H, imOut)
+    # AR_Tag_focused = cv2.warpPerspective(AR_tag, H,(50, 50))
     
     #Enlarge image for viewing 
     AR_Tag_focused  = cv2.resize(AR_Tag_focused, (128,128)) 
     
-    AR_Tag_focused = AR_Tag_focused[margin:-margin,margin:-margin]
+    # AR_Tag_focused = AR_Tag_focused[margin:-margin,margin:-margin]
     
     cv2.imshow("Warped Tag", AR_Tag_focused)
 
