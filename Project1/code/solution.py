@@ -159,41 +159,36 @@ def main():
     # AR_Tag_focused = AR_Tag_focused[margin:-margin,margin:-margin]
     
     cv2.imshow("Warped Tag", AR_Tag_focused)
+    cv2.waitKey(1000)    
 
     ## Print the images:
-    fig,plts = plt.subplots(2,3,figsize = (15,10))
-    plts[0][0].imshow(read_image,'gray')
-    plts[0][0].axis('off')
-    plts[0][0].title.set_text('a) Input image')
-    
-    plts[0][1].imshow(magnitude_spectrum,'gray')
-    plts[0][1].axis('off')
-    plts[0][1].title.set_text('b) FFT magnitude')
-
-    plts[0][2].imshow(magnitude_spectrum_hp,'gray')
-    plts[0][2].axis('off')
-    plts[0][2].title.set_text('c) FFT magnitude after applying High pass filter ')
-
-    plts[1][0].imshow(filltered_image,'gray')
-    plts[1][0].axis('off')
-    plts[1][0].title.set_text('d) Detected Edges')
-    
-    plts[1][1].imshow(AR_tag,'gray')
-    plts[1][1].axis('off')
-    plts[1][1].title.set_text('e) AR Tag located')
-    
-    plts[1][2].imshow(AR_Tag_focused)
-    plts[1][2].axis('off')
-    plts[1][2].title.set_text('f) AR Tag in Top down view ')
-    
-    if(not (os.path.isdir(SavePath))):
-        os.makedirs(SavePath)
-        
-    fig.savefig(SavePath+'ARDetectionUsingFFt.png')
-    print("Check ", SavePath," for Problem 1 Results")
+    plots = Plot(2,3)
+    plots.set(read_image,"a) Input image")
+    plots.set(magnitude_spectrum,"b) FFT magnitude")
+    plots.set(magnitude_spectrum_hp,'c) FFT magnitude after applying \nHigh pass filter ')
+    plots.set(filltered_image,'d) Detected Edges')
+    plots.set(AR_tag,'e) AR Tag located')
+    plots.set(AR_Tag_focused,'f) AR Tag in Top down view ')   
+    plots.save(SavePath,'ARDetectionUsingFFt.png')
    
 
-    cv2.waitKey(5000)    
+
+    #-------------Problem 1b-----------------#
+
+    # AR_block = cv2.imread('../data/ARTag.png')
+    # plt.imshow(AR_block)
+    # orientation,decodedValue,rotated_AR_block = getOrientation_2(AR_block,decode=True)
+    # print(orientation)
+    # # fig,plts = plt.plot()
+    # plt.imshow(rotated_AR_block)
+
+    # AR_block  = cv2.resize(AR_block, (128,128)) # linear interpolation
+
+    # Xdistribution = np.sum(AR_block,axis=0)
+    # Ydistribution = np.sum(AR_block,axis=1)
+    # plt.plot(Xdistribution)
+    # plt.show()
+    # cv2.waitKey(5000)    
     
 if __name__ == '__main__':
     main()
