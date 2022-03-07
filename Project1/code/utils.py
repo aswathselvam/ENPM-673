@@ -368,7 +368,11 @@ def crop_AR(AR_block):
             bottomy+=mdpt
             break
 
-    cropped_AR_block = AR_block[topy:bottomy,leftx:rightx]
+    try:
+        cropped_AR_block = AR_block[topy:bottomy,leftx:rightx]
+    except NameError:
+        return prev_AR_block
+        
     
     if (leftx < 0 )or(rightx < 0)or(topy < 0 )or(bottomy < 0):
         cropped_AR_block  = prev_AR_block
