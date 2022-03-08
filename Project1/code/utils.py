@@ -94,21 +94,61 @@ def detectARTag(read_image):
     # get convex hull from  contour image white pixels
     points = np.column_stack(np.where(canny.transpose() > 0))
     hull_pts = cv2.convexHull(points)
-
+    
+    # https://stackoverflow.com/questions/67434707/how-to-fill-the-hollow-lines-opencv
     # draw hull on copy of input and on black background
     hull = read_image.copy()
     cv2.drawContours(hull, [hull_pts], 0, (0,255,0), 2)
     hull2 = np.zeros(read_image.shape[:2], dtype=np.uint8)
     cv2.drawContours(hull2, [hull_pts], 0, 255, 2)
+    cv2.imshow("Hull 2 ", hull2)
 
-    cv2.imshow("Hull 2", hull2)
+    num = 4
+    quality = 0.1
+    mindist = max(read_image.shape[:2]) // 4
+    corners = cv2.goodFeaturesToTrack(hull2, num, quality, mindist)
+    corners = np.int0(corners)
+    for corner in corners:
+        px,py = corner.ravel()
+        cv2.circle(hull, (px,py), 5, (0,0,255), -1)
 
-    
-    
-    return 
+    cv2.imshow("Corners ", hull)
+
+    if len(corners)!=4:
+        return
+
+    corner_info = []
+    center = np.mean(corners, axis=0)
+    centx = center.ravel()[0]
+    centy = center.ravel()[1]
+    for corner in corners:
+        px,py = corner.ravel()
+        dx = px - centx
+        dy = py - centy
+        angle = (180/math.pi) * math.atan2(dy,dx)
+        corner_info.append([px,py,angle])
+
+    # function to define sort key as element 2 (i.e. angle)
+    def takeThird(elem):
+        return elem[2]
+
+    # sort corner_info on angle so result will be TL, TR, BR, BL order
+    corner_info.sort(key=takeThird)
+
+    # make conjugate control points
+    # get input points from corners
+    corner_list = []
+    for x, y, angle in corner_info:
+        corner_list.append([x,y])
+    print(corner_list)
+
+    # define input points from (sorted) corner_list
+    src_pts = np.float32(corner_list)
+    dst_pts = np.float32([[0,0], [size,0], [size,size], [0,size]])
+
 
     #----------------------------------------------------------------------------------------#
-    # H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
     # AR_corners=
     
