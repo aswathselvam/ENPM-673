@@ -178,44 +178,55 @@ def detectARTag(read_image):
     roi_gray = gray[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
     roi_read_image = read_image[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
 
-    harris_template_img = np.float32(roi_gray)
-    dst = cv2.cornerHarris(harris_template_img,10,3,0.04)
+    # harris_template_img = np.float32(roi_gray)
+    # dst = cv2.cornerHarris(harris_template_img,10,3,0.04)
     #result is dilated for marking the corners, not important
     # dst = cv2.dilate(dst,None)
     # Threshold for an optimal value, it may vary depending on the image.
-    harris_img = roi_read_image.copy()
-    harris_img[dst>0.5*dst.max()]=[0,0,255]
-    cv2.imshow("Harris corner on detected ARTag",harris_img)
-    harris_kpt = np.argwhere(dst > 0.5 * dst.max())
-    harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 10) for x in harris_kpt]
+    # harris_img = roi_read_image.copy()
+    # harris_img[dst>0.5*dst.max()]=[0,0,255]
+    # cv2.imshow("Harris corner on detected ARTag",harris_img)
+    # harris_kpt = np.argwhere(dst > 0.5 * dst.max())
+    # harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 7) for x in harris_kpt]
+    tomasi_kpt = cv2.goodFeaturesToTrack(roi_gray,25,0.01,10)
+    # tomasi_kpt = np.int0(tomasi_kpt)
+    tomasi_kpt=np.squeeze(tomasi_kpt)
+    tomasi_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 20) for x in tomasi_kpt]
 
-    kp_roi, des = sift.compute(roi_gray,harris_kpt)
+
+    kp_roi, des = sift.compute(roi_gray,tomasi_kpt)
     # kp_roi, des= sift.detectAndCompute(roi_gray,None)
     print("kps:", len(kp_roi))
     cv2.drawKeypoints(roi_gray,kp_roi,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     cv2.imshow("SIFT KP on detected ARTag ",roi_read_image)
 
     size = 128  #read_image.shape[0]
-    ART_tag_file_read_img = cv2.imread("../data/TAG.jpg")
+    ART_tag_file_read_img = cv2.imread("../data/Tag.png")
     ART_tag_file_read_img=cv2.resize(ART_tag_file_read_img,(size,size))
     ART_tag_file_read_img=ART_tag_file_read_img[10:120,10:120]
     ART_tag_file_read_img=cv2.resize(ART_tag_file_read_img,(size,size))
     # ART_tag_file_read_img = cv2.GaussianBlur(ART_tag_file_read_img,(3,3),0.2)#sigmaX=0.1,sigmaY=0.1)
     ART_template_tag_gray = cv2.cvtColor(ART_tag_file_read_img, cv2.COLOR_BGR2GRAY)
 
-    harris_template_img = np.float32(ART_template_tag_gray)
-    dst = cv2.cornerHarris(harris_template_img,10,3,0.04)
+    # harris_template_img = np.float32(ART_template_tag_gray)
+    # dst = cv2.cornerHarris(harris_template_img,10,3,0.04)
     #result is dilated for marking the corners, not important
     # dst = cv2.dilate(dst,None)
     # Threshold for an optimal value, it may vary depending on the image.
-    harris_img = ART_tag_file_read_img.copy()
-    harris_img[dst>0.5*dst.max()]=[0,0,255]
-    cv2.imshow("Harris corner on Template ARTag",harris_img)
+    # harris_img = ART_tag_file_read_img.copy()
+    # harris_img[dst>0.5*dst.max()]=[0,0,255]
+    # cv2.imshow("Harris corner on Template ARTag",harris_img)
     
-    harris_kpt = np.argwhere(dst > 0.5 * dst.max())
-    harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 10) for x in harris_kpt]
+    # harris_kpt = np.argwhere(dst > 0.5 * dst.max())
+    # harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 7) for x in harris_kpt]
 
-    kpt, dest = sift.compute(ART_template_tag_gray,harris_kpt)
+    tomasi_kpt = cv2.goodFeaturesToTrack(ART_template_tag_gray,25,0.01,10)
+    # tomasi_kpt = np.int0(tomasi_kpt)
+    tomasi_kpt=np.squeeze(tomasi_kpt)
+    tomasi_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 20) for x in tomasi_kpt]
+
+
+    kpt, dest = sift.compute(ART_template_tag_gray,tomasi_kpt)
     # kpt, dest = sift.detectAndCompute(ART_template_tag_gray,None)
 
     bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
