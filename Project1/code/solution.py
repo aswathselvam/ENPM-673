@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft, ifft
 import argparse
-from utils import *
+from utils2 import *
 
 def main():
     
@@ -38,23 +38,23 @@ def main():
             cv2.waitKey(1)
 
             #-----------------Problem 1 A----------------#
-            # success, H, tag = detectARTag(frame)
-            # if success:
-            #     cv2.imshow("Warped Tag", tag)
-            # else:
-            #     continue 
+            success, H, tag = detectARTag(frame)
+            if success:
+                cv2.imshow("Warped Tag", tag)
+            else:
+                continue 
 
             # #-------------Problem 1 B-----------------#
-            # orientation, decodedValue,_ = getOrientation(tag)
+            orientation, decodedValue,_ = getOrientation(tag)
 
             # #-------------Problem 2 A-----------------#
-            # imOut=projectTestudo(frame, testudoBlock, H, orientation, decodedValue)
-            # cv2.imshow("Testudo Image Projection",imOut)
+            imOut=projectTestudo(frame, testudoBlock, H, orientation, decodedValue)
+            cv2.imshow("Testudo Image Projection",imOut)
 
             # #-------------Problem 2 B-----------------#
-            # success, cubeAROut = processAR(frame,H,size)
-            # cv2.imshow("Cube AR",cubeAROut)
-            # out.write(cubeAROut)
+            success, cubeAROut = processAR(frame,H,size)
+            cv2.imshow("Cube AR",cubeAROut)
+            out.write(cubeAROut)
 
         else:
             break
