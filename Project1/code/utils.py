@@ -82,197 +82,13 @@ def detectARTag(read_image):
     binary=cv2.Canny(binary,10,50) #apply canny to roi
     cv2.imshow("Binary image ",binary)
 
-    # gray = cv2.cvtColor(read_image, cv2.COLOR_BGR2GRAY)
-    # kps,desc = getKeyPoints(filtered_image,ORB)
-    # feature_img = read_image.copy()
-    # cv2.drawKeypoints(filtered_image,kps,feature_img,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    # cv2.imshow("SIFT KP ",feature_img)
+    size = 128
+    #------------------------------With Hough Lines------------------------------------------#
 
-
-    # harris_ip_img = np.float32(binary)
-    # dst = cv2.cornerHarris(harris_ip_img,10,11,0.01)
-    # #result is dilated for marking the corners, not important
-    # dst = cv2.dilate(dst,None)
-    # # Threshold for an optimal value, it may vary depending on the image.
-    # harris_img = read_image.copy()
-    # harris_img[dst>0.01*dst.max()]=[0,0,255]
-    # cv2.imshow("Harris corner ",harris_img)
-
-    # ret, dst = cv2.threshold(dst,0.01*dst.max(),255,0)
-    # dst = np.uint8(dst)
-    # # find centroids
-    # ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
-    # # define the criteria to stop and refine the corners
-    # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
-    # corners = cv2.cornerSubPix(gray,np.float32(centroids),(5,5),(-1,-1),criteria)
-    # # Now draw them
-    # res = np.hstack((centroids,corners))
-    # res = np.int0(res)
-    # harris_img[res[:,1],res[:,0]]=[0,0,255]
-    # harris_img[res[:,3],res[:,2]] = [0,255,0]
-    # cv2.imshow("Refined Harris corner ",harris_img)
-
-
-
-    # Set up the blob detector.
-    params = cv2.SimpleBlobDetector_Params()
-
-    # Change thresholds
-    params.minThreshold = 80
-    params.maxThreshold = 150
-
-    # Filter by Area.
-    params.filterByArea = True
-    params.minArea = 1000
-
-    # Filter by Circularity
-    params.filterByCircularity = True
-    params.minCircularity =  0 #Square: 0.785
-
-    # Filter by Convexity
-    params.filterByConvexity = True
-    params.minConvexity = 0
-
-    # Filter by Inertia
-    params.filterByInertia = True
-    params.minInertiaRatio = 0.01
-
-    # Create a detector with the parameters
-    detector = cv2.SimpleBlobDetector_create(params)
-
-    # Detect blobs from the image.
-    keypoints = detector.detect(binary)
-
-    # Draw detected blobs as red circles.
-    # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS - This method draws detected blobs as red circles and ensures that the size of the circle corresponds to the size of the blob.
-    blobs = read_image.copy()
-    cv2.drawKeypoints(filtered_image, keypoints, blobs, (0,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-    # Show keypoints
-    cv2.imshow('Blobs',blobs)
-
-    sift = cv2.SIFT_create()
-    # sift = cv2.ORB_create()
-    gray = cv2.cvtColor(read_image, cv2.COLOR_BGR2GRAY)
-
-    mask_sift = np.ones(read_image.shape[:2],dtype=np.uint8)
     
-    if len(keypoints)<1:
-        return
-
-    keypoint=None
-    for kp in keypoints:
-        keypoint = (kp.pt[1], kp.pt[0], kp.size)
 
 
-    #center of mask 
-    radius = int(keypoint[2])
-    centre = ( int(keypoint[0]), int(keypoint[1]) )
-    print(centre,radius)
-
-    #Fill the circle with zeros
-    mask_value = 255
-    # cv2.rectangle(mask_sift,  centre, (radius,radius), mask_value, -1)
-    # cv2.circle(mask_sift, centre, radius, mask_value, thickness=-1)
-
-    roi_gray = gray[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
-    roi_read_image = read_image[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
-
-    # harris_template_img = np.float32(roi_gray)
-    # dst = cv2.cornerHarris(harris_template_img,10,3,0.04)
-    #result is dilated for marking the corners, not important
-    # dst = cv2.dilate(dst,None)
-    # Threshold for an optimal value, it may vary depending on the image.
-    # harris_img = roi_read_image.copy()
-    # harris_img[dst>0.5*dst.max()]=[0,0,255]
-    # cv2.imshow("Harris corner on detected ARTag",harris_img)
-    # harris_kpt = np.argwhere(dst > 0.5 * dst.max())
-    # harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 7) for x in harris_kpt]
-    tomasi_kpt = cv2.goodFeaturesToTrack(roi_gray,25,0.01,10)
-    # tomasi_kpt = np.int0(tomasi_kpt)
-    tomasi_kpt=np.squeeze(tomasi_kpt)
-    tomasi_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 20) for x in tomasi_kpt]
-
-
-    kp_roi, des = sift.compute(roi_gray,tomasi_kpt)
-    # kp_roi, des= sift.detectAndCompute(roi_gray,None)
-    print("kps:", len(kp_roi))
-    cv2.drawKeypoints(roi_gray,kp_roi,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    cv2.imshow("SIFT KP on detected ARTag ",roi_read_image)
-
-    size = 128  #read_image.shape[0]
-    ART_tag_file_read_img = cv2.imread("../data/Tag.png")
-    ART_tag_file_read_img=cv2.resize(ART_tag_file_read_img,(size,size))
-    ART_tag_file_read_img=ART_tag_file_read_img[10:120,10:120]
-    ART_tag_file_read_img=cv2.resize(ART_tag_file_read_img,(size,size))
-    # ART_tag_file_read_img = cv2.GaussianBlur(ART_tag_file_read_img,(3,3),0.2)#sigmaX=0.1,sigmaY=0.1)
-    ART_template_tag_gray = cv2.cvtColor(ART_tag_file_read_img, cv2.COLOR_BGR2GRAY)
-
-    # harris_template_img = np.float32(ART_template_tag_gray)
-    # dst = cv2.cornerHarris(harris_template_img,10,3,0.04)
-    #result is dilated for marking the corners, not important
-    # dst = cv2.dilate(dst,None)
-    # Threshold for an optimal value, it may vary depending on the image.
-    # harris_img = ART_tag_file_read_img.copy()
-    # harris_img[dst>0.5*dst.max()]=[0,0,255]
-    # cv2.imshow("Harris corner on Template ARTag",harris_img)
-    
-    # harris_kpt = np.argwhere(dst > 0.5 * dst.max())
-    # harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 7) for x in harris_kpt]
-
-    tomasi_kpt = cv2.goodFeaturesToTrack(ART_template_tag_gray,25,0.01,10)
-    # tomasi_kpt = np.int0(tomasi_kpt)
-    tomasi_kpt=np.squeeze(tomasi_kpt)
-    tomasi_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 20) for x in tomasi_kpt]
-
-
-    kpt, dest = sift.compute(ART_template_tag_gray,tomasi_kpt)
-    # kpt, dest = sift.detectAndCompute(ART_template_tag_gray,None)
-
-    bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
-    matches = bf.match(des,dest)
-    matches = sorted(matches, key = lambda x:x.distance)
-
-    matchs_roi_img = cv2.drawMatches(roi_read_image, kp_roi, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
-    cv2.imshow("Matches shown in ROI", matchs_roi_img)
-
-    kp=[]
-    for ckp in kp_roi:
-        kp.append(cv2.KeyPoint(ckp.pt[0] + keypoint[1]-radius, ckp.pt[1]+keypoint[0] - radius, ckp.size))
-        # kp[i][1] += keypoint[0]-radius
-        # kp[i][0] += keypoint[1]-radius
-
-    matchs_img = cv2.drawMatches(read_image, kp, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
-    cv2.imshow("Matches shown in Full image", matchs_img)
-
-    ART_tag_file_op = ART_tag_file_read_img.copy()
-    cv2.drawKeypoints(ART_template_tag_gray,kpt,ART_tag_file_op,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    cv2.imshow("SIFT KP on Template ARTag",ART_tag_file_op)
-    
-    # store all the good matches as per Lowe's ratio test.
-    # good = []
-    if len(matches)<4:
-        return
-    # for m in matches:
-    #     if m.distance < 0.7:
-    #         good.append(m)
-
-    # # for m,n in matches:
-    # #     if m.distance < 0.7*n.distance:
-    # #         good.append(m)
-
-    # print("good matches: ",len(good))
-    # MIN_MATCH_COUNT = 0
-    # if len(good)>=MIN_MATCH_COUNT:
-    #     src_pts = np.float32([ kp[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
-    #     dst_pts = np.float32([ kpt[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
-    #     H = computeHomography(src_pts, dst_pts)
-    # else:
-    #     return
-
-    src_pts = np.float32([ kp[m.queryIdx].pt for m in matches ]).reshape(-1,1,2)
-    dst_pts = np.float32([ kpt[m.trainIdx].pt for m in matches ]).reshape(-1,1,2)
-    # H = computeHomography(src_pts, dst_pts)
+    #----------------------------------------------------------------------------------------#
     H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
     # AR_corners=
@@ -301,7 +117,7 @@ def detectARTag(read_image):
         plots.set(magnitude_spectrum,"FFT magnitude")
         plots.set(magnitude_spectrum_hp,'FFT magnitude after applying \nHigh pass filter ')
         plots.set(filtered_image,'Detected Edges')
-        plots.set(blobs, "blob")
+        # plots.set(blobs, "blob")
         # plots.set(contours_AR_code_img, "Contours of AR code,\nprocessed from (d)")
         # plots.set( cv2.cvtColor(AR_corners_img,cv2.COLOR_BGR2RGB), "4 Corners of AR code")
         # plots.set(AR_Tag,'AR Tag in image space')
