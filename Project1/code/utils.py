@@ -173,16 +173,16 @@ def detectARTag(read_image):
     #Fill the circle with zeros
     mask_value = 255
     # cv2.rectangle(mask_sift,  centre, (radius,radius), mask_value, -1)
-    # cv2.circle(mask_sift, centre, radius, mask_value, thickness=-1)
+    cv2.circle(mask_sift, centre, radius, mask_value, thickness=-1)
 
-    roi_gray = gray[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
-    roi_read_image = read_image[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
+    # roi_gray = gray[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
+    # roi_read_image = read_image[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
 
-    kp, des= sift.detectAndCompute(roi_gray,None)
+    kp, des= sift.detectAndCompute(gray,mask_sift)
     print("kps:", len(kp))
-    # gray_op = read_image.copy()
-    gray_op = roi_read_image.copy()
-    cv2.drawKeypoints(roi_gray,kp,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    roi_read_image = read_image.copy()
+    # gray_op = roi_read_image.copy()
+    cv2.drawKeypoints(gray,kp,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     cv2.imshow("SIFT K P ",roi_read_image)
 
     ART_tag_file_read_img = cv2.imread("../data/TAG.jpg")
