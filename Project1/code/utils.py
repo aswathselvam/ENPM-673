@@ -81,21 +81,21 @@ def detectARTag(read_image):
     binary=cv2.Canny(binary,10,50) #apply canny to roi
     cv2.imshow("Binary image ",binary)
 
-    gray = cv2.cvtColor(read_image, cv2.COLOR_BGR2GRAY)
-    kps,desc = getKeyPoints(filtered_image,ORB)
-    feature_img = read_image.copy()
-    cv2.drawKeypoints(filtered_image,kps,feature_img,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    cv2.imshow("SIFT KP ",feature_img)
+    # gray = cv2.cvtColor(read_image, cv2.COLOR_BGR2GRAY)
+    # kps,desc = getKeyPoints(filtered_image,ORB)
+    # feature_img = read_image.copy()
+    # cv2.drawKeypoints(filtered_image,kps,feature_img,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    # cv2.imshow("SIFT KP ",feature_img)
 
 
-    harris_ip_img = np.float32(binary)
-    dst = cv2.cornerHarris(harris_ip_img,10,11,0.01)
-    #result is dilated for marking the corners, not important
-    dst = cv2.dilate(dst,None)
-    # Threshold for an optimal value, it may vary depending on the image.
-    harris_img = read_image.copy()
-    harris_img[dst>0.01*dst.max()]=[0,0,255]
-    cv2.imshow("Harris corner ",harris_img)
+    # harris_ip_img = np.float32(binary)
+    # dst = cv2.cornerHarris(harris_ip_img,10,11,0.01)
+    # #result is dilated for marking the corners, not important
+    # dst = cv2.dilate(dst,None)
+    # # Threshold for an optimal value, it may vary depending on the image.
+    # harris_img = read_image.copy()
+    # harris_img[dst>0.01*dst.max()]=[0,0,255]
+    # cv2.imshow("Harris corner ",harris_img)
 
     # ret, dst = cv2.threshold(dst,0.01*dst.max(),255,0)
     # dst = np.uint8(dst)
@@ -150,6 +150,15 @@ def detectARTag(read_image):
     # Show keypoints
     cv2.imshow('Blobs',blobs)
 
+    sift = cv2.SIFT_create()
+    kp, des = sift.compute(read_image, keypoints)
+
+    feature_img = read_image.copy()
+    cv2.drawKeypoints(filtered_image,kp,feature_img,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    cv2.imshow("SIFT KP ",feature_img)
+    
+
+
     return
 
     # AR_corners=
@@ -202,9 +211,10 @@ def getKeyPoints(img,TYPE):
     
     if TYPE==SIFT:
         sift = cv2.SIFT_create()
-        kp, des = sift.detectAndCompute(img,None)
+        # kp = sift.detect(img,None)
         # compute the descriptors with ORB
-        kp, des = sift.compute(img, kp)
+        # kp, des = sift.compute(img, kp)
+        kp, des = sift.detectAndCompute(img,None)
         return kp, des
 
 def projectTestudo(im_org,testudoBlock, H, orientation, decodedValue):
