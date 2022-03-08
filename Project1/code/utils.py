@@ -13,10 +13,11 @@ from sqlalchemy import column
 
 prev_AR_block = None
 
-
-
-savePlotFFT = True
+savePlotFFT = False
 savePlotTestudo = True
+
+ORB = 'orb'
+SIFT = 'sift'
 
 def detectARTag(read_image):
     global savePlotFFT
@@ -67,84 +68,95 @@ def detectARTag(read_image):
 
     ifft = np.fft.ifftshift(filtered_spectrum)
     inverse_fft = cv2.idft(ifft)
-    filltered_image = cv2.magnitude(inverse_fft[:,:,0], inverse_fft[:,:,1])
-    filltered_image = cv2.normalize(filltered_image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    filtered_image = cv2.magnitude(inverse_fft[:,:,0], inverse_fft[:,:,1])
+    filtered_image = cv2.normalize(filtered_image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    cv2.imshow("Filtered image ",filtered_image)
 
     # perform thresholding and obtain binary image
-    _, binary = cv2.threshold(filltered_image, 20, 255, cv2.THRESH_BINARY) 
+    # https://docs.opencv.org/3.4/d9/d61/tutorial_py_morphological_ops.html
+    _, binary = cv2.threshold(filtered_image, 80, 255, cv2.THRESH_BINARY)
     kernel = np.ones((3,3),np.uint8)
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-    # cv2.imshow("Binary image ",filltered_image)
+    # binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    binary = cv2.dilate(binary,kernel,iterations = 1) 
+    binary=cv2.Canny(binary,10,50) #apply canny to roi
+    cv2.imshow("Binary image ",binary)
 
-    # find the contour of the largest area in the image and extract the region where White space of Tag is present. 
-    contours, hierarchy = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # print("Number of contours found: ", len(contours))
-    contours_img = cv2.cvtColor(binary,cv2.COLOR_GRAY2RGB)
-    for i in range(len(contours)):
-        cv2.drawContours(contours_img, contours, i, (255*(1-i/len(contours)),i*255/len(contours),0), 1)
-    # cv2.imshow("Locate AR TAG - Contours", contours_img)
+    gray = cv2.cvtColor(read_image, cv2.COLOR_BGR2GRAY)
+    kps,desc = getKeyPoints(filtered_image,ORB)
+    feature_img = read_image.copy()
+    cv2.drawKeypoints(filtered_image,kps,feature_img,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    cv2.imshow("SIFT KP ",feature_img)
 
-    Area_List = []
-    if(len(contours)<3):
-        print("[Info] Very few contours found")
-    for c in contours:
-        Area_List.append(cv2.contourArea(c))
-    i = np.argmax(np.array(Area_List))
-    rect = cv2.boundingRect(contours[i])
-    x,y,w,h = rect
-    margin = 20
 
-    # get the AR Tag with white space with some padding
-    AR_sheet = read_image[y-margin:y+h+margin,x-margin:x+w+margin]
-    # cv2.imshow("AR Tag Located", AR_sheet)
+    harris_ip_img = np.float32(binary)
+    dst = cv2.cornerHarris(harris_ip_img,10,11,0.01)
+    #result is dilated for marking the corners, not important
+    dst = cv2.dilate(dst,None)
+    # Threshold for an optimal value, it may vary depending on the image.
+    harris_img = read_image.copy()
+    harris_img[dst>0.01*dst.max()]=[0,0,255]
+    cv2.imshow("Harris corner ",harris_img)
 
-    # find the contour of the AR block inside the Tag with  white space 
-    bgr2gray = cv2.cvtColor(AR_sheet, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(bgr2gray, 240, 255, cv2.THRESH_BINARY)
-    contours, hierarchy = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # print("Number of contours found: ", len(contours))
+    # ret, dst = cv2.threshold(dst,0.01*dst.max(),255,0)
+    # dst = np.uint8(dst)
+    # # find centroids
+    # ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
+    # # define the criteria to stop and refine the corners
+    # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+    # corners = cv2.cornerSubPix(gray,np.float32(centroids),(5,5),(-1,-1),criteria)
+    # # Now draw them
+    # res = np.hstack((centroids,corners))
+    # res = np.int0(res)
+    # harris_img[res[:,1],res[:,0]]=[0,0,255]
+    # harris_img[res[:,3],res[:,2]] = [0,255,0]
+    # cv2.imshow("Refined Harris corner ",harris_img)
 
-    contours_AR_code_img = cv2.cvtColor(binary,cv2.COLOR_GRAY2RGB)
-    for i in range(len(contours)):
-        cv2.drawContours(contours_AR_code_img, contours, i, (255*(1-i/len(contours)),i*255/len(contours),0), 2+i)
-    # cv2.imshow("Contours of AR code", contours_AR_code_img)
 
-    #Get AR Tags black border, -1 index has the corners of A4 size sheet paper. 
-    AR_contour = contours[-2] 
-    # print("Contours detected are: ",contours)
-    # get the corresponding corner.
-    AR_corners = cv2.approxPolyDP(AR_contour,0.07*cv2.arcLength(AR_contour,True),True)
-    # AR_corners = cv2.goodFeaturesToTrack(binary, 4, 0.5, 50)
-    AR_corners_img = cv2.cvtColor(binary,cv2.COLOR_GRAY2RGB)
-        
-    #4 Corner points for identifying 4 unique corner points: Dark Red, Blue, Green, Yellow
-    cornerpts_color_map=[(86, 50, 168), (15, 165, 219), (29, 219, 15), (219, 216, 15)]
-    count=0
-    for corner in AR_corners:
-        x,y = corner.ravel()
-        cv2.circle(AR_corners_img,(int(x),int(y)),6,cornerpts_color_map[count],5)
-        count+=1
-        if count>=4:
-            # print("[Info] More than 4 corner points detected!!")
-            break
-    if count<3:
-        print("[Error] Less than 4 corner points detected!!")
-        return success, None, None
-    AR_corners_margin = np.squeeze(AR_corners)
-    AR_Tag = AR_sheet[AR_corners_margin[0][1]:AR_corners_margin[2][1], AR_corners_margin[0][0]:AR_corners_margin[2][0]]
 
-    # print("AR Corners coordinates: ",AR_corners)
-    cv2.drawContours(AR_corners_img, AR_corners, -1, (0, 0, 255), 3)
-    # cv2.imshow("Corners of AR Code",AR_corners_img)
+    # Set up the blob detector.
+    params = cv2.SimpleBlobDetector_Params()
+
+    # Change thresholds
+    params.minThreshold = 80
+    params.maxThreshold = 150
+
+    # Filter by Area.
+    params.filterByArea = True
+    params.minArea = 1000
+
+    # Filter by Circularity
+    params.filterByCircularity = True
+    params.minCircularity =  0 #Square: 0.785
+
+    # Filter by Convexity
+    params.filterByConvexity = True
+    params.minConvexity = 0
+
+    # Filter by Inertia
+    params.filterByInertia = True
+    params.minInertiaRatio = 0.01
+
+    # Create a detector with the parameters
+    detector = cv2.SimpleBlobDetector_create(params)
+
+    # Detect blobs from the image.
+    keypoints = detector.detect(binary)
+
+    # Draw detected blobs as red circles.
+    # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS - This method draws detected blobs as red circles and ensures that the size of the circle corresponds to the size of the blob.
+    blobs = read_image.copy()
+    cv2.drawKeypoints(filtered_image, keypoints, blobs, (0,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+    # Show keypoints
+    cv2.imshow('Blobs',blobs)
+
+    return
+
+    # AR_corners=
     
     # Compute Homography
     size = 128  #read_image.shape[0]
     destination_points = np.array([[0,0],[size,0],[size,size],[0,size]]).reshape(-1,1,2)
-    AR_corners = np.squeeze(np.float32(AR_corners))
-    AR_corners[:,0]+=y-margin
-    AR_corners[:,1]+=x-margin
-    # print(AR_corners)
-    # print(AR_corners[:,1])
     H = computeHomography(AR_corners, np.float32(destination_points))
     # H,mask = cv2.findHomography(np.float32(AR_corners), np.float32(destination_points))
 
@@ -166,18 +178,34 @@ def detectARTag(read_image):
         plots.set(read_image,"Input image")
         plots.set(magnitude_spectrum,"FFT magnitude")
         plots.set(magnitude_spectrum_hp,'FFT magnitude after applying \nHigh pass filter ')
-        plots.set(filltered_image,'Detected Edges')
-        plots.set(cv2.resize(contours_img,(200,200)), "Contours detected in the whole image")
-        plots.set(contours_AR_code_img, "Contours of AR code,\nprocessed from (d)")
-        plots.set( cv2.cvtColor(AR_corners_img,cv2.COLOR_BGR2RGB), "4 Corners of AR code")
-        plots.set(AR_Tag,'AR Tag in image space')
+        plots.set(filtered_image,'Detected Edges')
+        # plots.set(cv2.resize(contours_img,(200,200)), "Contours detected in the whole image")
+        # plots.set(contours_AR_code_img, "Contours of AR code,\nprocessed from (d)")
+        # plots.set( cv2.cvtColor(AR_corners_img,cv2.COLOR_BGR2RGB), "4 Corners of AR code")
+        # plots.set(AR_Tag,'AR Tag in image space')
         plots.set(AR_Tag_focused,'AR Tag after \nHomography Transformation')   
         plots.save('../outputs/Q1/','ARDetectionUsingFFt.png')
         savePlotFFT=False
     success = True
     return success, H, AR_Tag_focused
 
-
+def getKeyPoints(img,TYPE):
+    # https://docs.opencv.org/4.x/db/d27/tutorial_py_table_of_contents_feature2d.html
+    if TYPE==ORB:
+        # Initiate ORB detector
+        orb = cv2.ORB_create()
+        # find the keypoints with ORB
+        kp = orb.detect(img,None)
+        # compute the descriptors with ORB
+        kp, des = orb.compute(img, kp)
+        return kp, des
+    
+    if TYPE==SIFT:
+        sift = cv2.SIFT_create()
+        kp, des = sift.detectAndCompute(img,None)
+        # compute the descriptors with ORB
+        kp, des = sift.compute(img, kp)
+        return kp, des
 
 def projectTestudo(im_org,testudoBlock, H, orientation, decodedValue):
     global savePlotTestudo
@@ -387,19 +415,27 @@ def getOrientation(AR_block):
     AR_block = AR_block[margin:-margin,margin:-margin]
     _, AR_block = cv2.threshold(cv2.cvtColor(AR_block, cv2.COLOR_BGR2GRAY), 240, 255, cv2.THRESH_BINARY) # only threshold
     cropped_AR_block = crop_AR(AR_block)
+
+    grid_size = 16
+    nx, ny = (16, 16)
+    x = np.linspace(0, 64, nx)
+    y = np.linspace(0, 64, ny)
+    xv, yv = np.meshgrid(x, y)
     cropped_AR_block  = cv2.resize(cropped_AR_block, (64,64))
 
-    lowerright = cropped_AR_block[48:64,48:64]
-    lowerleft = cropped_AR_block[48:64,0:16]
+    lowerright = cropped_AR_block[3*grid_size:64, 3*grid_size:64]
+    lowerleft = cropped_AR_block[3*grid_size:64, 3*grid_size:16]
 
-    upperright = cropped_AR_block[0:16,48:64]
-    upperleft = cropped_AR_block[0:16,0:16]
+    upperright = cropped_AR_block[0:grid_size,3*grid_size:64]
+    upperleft = cropped_AR_block[0:grid_size,0:grid_size]
 
-    UL,UR,LL,LR = np.int(np.median(upperleft)), np.int(np.median(upperright)), np.int(np.median(lowerleft)), np.int(np.median(lowerright))
+    UL,UR,LL,LR = np.int(np.median(upperleft)), np.int(np.median(upperright)), \
+         np.int(np.median(lowerleft)), np.int(np.median(lowerright))
 
     AR_orientationPattern = [UL,UR,LL,LR]
     orientations = [180,-90,90,0]
 
+    #Find the corner with maximum pixel intensity value
     index = np.argmax(AR_orientationPattern)
 
     orientation = orientations[index]

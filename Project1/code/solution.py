@@ -1,15 +1,9 @@
-from typing import Tuple
 import cv2
 import os
-from cv2 import imshow
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft, ifft
-import math
 import argparse
-import timeit
-
-from sympy import continued_fraction
 from utils import *
 
 def main():
@@ -35,31 +29,31 @@ def main():
     testudoBlock = cv2.imread(testudoPath)
     testudoBlock  = cv2.resize(testudoBlock, (size,size))
     # testudoBlock = cv2.cvtColor(testudoBlock, cv2.COLOR_RGB2BGR)
-
+    
     while(True):
         ret, frame = cap.read()
         if ret:
             frame  = cv2.resize(frame, (512,512))
             cv2.waitKey(1)
-
+            detectARTag(frame)
             #-----------------Problem 1 A----------------#
-            success, H, tag = detectARTag(frame)
-            if success:
-                cv2.imshow("Warped Tag", tag)
-            else:
-                continue 
+            # success, H, tag = detectARTag(frame)
+            # if success:
+            #     cv2.imshow("Warped Tag", tag)
+            # else:
+            #     continue 
 
             # #-------------Problem 1 B-----------------#
-            orientation, decodedValue,_ = getOrientation(tag)
+            # orientation, decodedValue,_ = getOrientation(tag)
 
             # #-------------Problem 2 A-----------------#
-            imOut=projectTestudo(frame, testudoBlock, H, orientation, decodedValue)
-            cv2.imshow("Testudo Image Projection",imOut)
+            # imOut=projectTestudo(frame, testudoBlock, H, orientation, decodedValue)
+            # cv2.imshow("Testudo Image Projection",imOut)
 
             # #-------------Problem 2 B-----------------#
-            success, cubeAROut = processAR(frame,H,size)
-            cv2.imshow("Cube AR",cubeAROut)
-            out.write(cubeAROut)
+            # success, cubeAROut = processAR(frame,H,size)
+            # cv2.imshow("Cube AR",cubeAROut)
+            # out.write(cubeAROut)
 
         else:
             break
