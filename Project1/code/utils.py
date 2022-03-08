@@ -151,8 +151,8 @@ def detectARTag(read_image):
     # Show keypoints
     cv2.imshow('Blobs',blobs)
 
-    # sift = cv2.SIFT_create()
-    sift = cv2.ORB_create()
+    sift = cv2.SIFT_create()
+    # sift = cv2.ORB_create()
     gray = cv2.cvtColor(read_image, cv2.COLOR_BGR2GRAY)
 
     mask_sift = np.ones(read_image.shape[:2],dtype=np.uint8)
@@ -186,9 +186,11 @@ def detectARTag(read_image):
     harris_img = roi_read_image.copy()
     harris_img[dst>0.5*dst.max()]=[0,0,255]
     cv2.imshow("Harris corner on detected ARTag",harris_img)
-    
+    harris_kpt = np.argwhere(dst > 0.5 * dst.max())
+    harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 10) for x in harris_kpt]
 
-    kp_roi, des= sift.detectAndCompute(roi_gray,None)
+    kp_roi, des = sift.compute(roi_gray,harris_kpt)
+    # kp_roi, des= sift.detectAndCompute(roi_gray,None)
     print("kps:", len(kp_roi))
     cv2.drawKeypoints(roi_gray,kp_roi,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     cv2.imshow("SIFT KP on detected ARTag ",roi_read_image)
@@ -210,11 +212,11 @@ def detectARTag(read_image):
     harris_img[dst>0.5*dst.max()]=[0,0,255]
     cv2.imshow("Harris corner on Template ARTag",harris_img)
     
-    # harris_kpt = np.argwhere(dst > 0.5 * dst.max())
-    # harris_kpt = [cv2.KeyPoint(x[1], x[0], 1) for x in harris_kpt]
+    harris_kpt = np.argwhere(dst > 0.5 * dst.max())
+    harris_kpt = [cv2.KeyPoint(float(x[1]), float(x[0]), 10) for x in harris_kpt]
 
-
-    kpt, dest = sift.detectAndCompute(ART_template_tag_gray,None)
+    kpt, dest = sift.compute(ART_template_tag_gray,harris_kpt)
+    # kpt, dest = sift.detectAndCompute(ART_template_tag_gray,None)
 
     bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
     matches = bf.match(des,dest)
