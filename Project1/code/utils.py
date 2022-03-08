@@ -206,8 +206,8 @@ def detectARTag(read_image):
     matches = bf.match(des,dest)
     matches = sorted(matches, key = lambda x:x.distance)
 
-    img3 = cv2.drawMatches(roi_read_image, kp_roi, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
-    plt.imshow(img3),plt.show()
+    matchs_roi_img = cv2.drawMatches(roi_read_image, kp_roi, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
+    cv2.imshow("Matches shown in ROI", matchs_roi_img)
 
     kp=[]
     for ckp in kp_roi:
@@ -215,8 +215,8 @@ def detectARTag(read_image):
         # kp[i][1] += keypoint[0]-radius
         # kp[i][0] += keypoint[1]-radius
 
-    img3 = cv2.drawMatches(read_image, kp, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
-    plt.imshow(img3),plt.show()
+    matchs_img = cv2.drawMatches(read_image, kp, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
+    cv2.imshow("Matches shown in Full image", matchs_img)
 
     ART_tag_file_op = ART_tag_file_read_img.copy()
     cv2.drawKeypoints(ART_tag_gray,kpt,ART_tag_file_op,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
