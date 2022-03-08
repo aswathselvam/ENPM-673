@@ -54,7 +54,7 @@ def detectARTag(read_image):
     
     #center of mask 
     centre = (mask.shape[0]//2,mask.shape[1]//2)
-    radius = 30
+    radius = 25
 
     #Fill the circle with zeros
     mask_value = 0
@@ -71,25 +71,44 @@ def detectARTag(read_image):
     inverse_fft = cv2.idft(ifft)
     filtered_image = cv2.magnitude(inverse_fft[:,:,0], inverse_fft[:,:,1])
     filtered_image = cv2.normalize(filtered_image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    cv2.imshow("Filtered image ",filtered_image)
+    # cv2.imshow("Filtered image ",filtered_image)
 
     # perform thresholding and obtain binary image
     # https://docs.opencv.org/3.4/d9/d61/tutorial_py_morphological_ops.html
-    _, binary = cv2.threshold(filtered_image, 80, 255, cv2.THRESH_BINARY)
-    kernel = np.ones((3,3),np.uint8)
+    _, binary = cv2.threshold(filtered_image, 85, 255, cv2.THRESH_BINARY, -1)
+    kernel = np.ones((2,2),np.uint8)
+    morph_binary = cv2.dilate(binary,kernel,iterations = 2) 
+    morph_binary = cv2.erode(morph_binary,kernel,iterations = 4) 
+    morph_binary = cv2.dilate(morph_binary,kernel,iterations = 5) 
     # binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-    binary = cv2.dilate(binary,kernel,iterations = 1) 
-    binary=cv2.Canny(binary,10,50) #apply canny to roi
+    #TODO: Find centeroid and reject every pixel value outside
+    #       standard deviation in x and y direction. 
+    #       Pass it to canny edge.
+    canny=cv2.Canny(morph_binary,10,50) #apply canny to roi
     cv2.imshow("Binary image ",binary)
+    cv2.imshow("Canny image ",canny)
 
     size = 128
     #------------------------------With Hough Lines------------------------------------------#
 
-    
+    # get convex hull from  contour image white pixels
+    points = np.column_stack(np.where(canny.transpose() > 0))
+    hull_pts = cv2.convexHull(points)
 
+    # draw hull on copy of input and on black background
+    hull = read_image.copy()
+    cv2.drawContours(hull, [hull_pts], 0, (0,255,0), 2)
+    hull2 = np.zeros(read_image.shape[:2], dtype=np.uint8)
+    cv2.drawContours(hull2, [hull_pts], 0, 255, 2)
+
+    cv2.imshow("Hull 2", hull2)
+
+    
+    
+    return 
 
     #----------------------------------------------------------------------------------------#
-    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+    # H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
     # AR_corners=
     
