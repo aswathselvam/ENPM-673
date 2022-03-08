@@ -173,17 +173,15 @@ def detectARTag(read_image):
     #Fill the circle with zeros
     mask_value = 255
     # cv2.rectangle(mask_sift,  centre, (radius,radius), mask_value, -1)
-    cv2.circle(mask_sift, centre, radius, mask_value, thickness=-1)
+    # cv2.circle(mask_sift, centre, radius, mask_value, thickness=-1)
 
-    # roi_gray = gray[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
-    # roi_read_image = read_image[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
+    roi_gray = gray[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
+    roi_read_image = read_image[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
 
-    kp, des= sift.detectAndCompute(gray,mask_sift)
-    print("kps:", len(kp))
-    roi_read_image = read_image.copy()
-    # gray_op = roi_read_image.copy()
-    cv2.drawKeypoints(gray,kp,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    cv2.imshow("SIFT K P ",roi_read_image)
+    kp_roi, des= sift.detectAndCompute(roi_gray,None)
+    print("kps:", len(kp_roi))
+    # cv2.drawKeypoints(roi_gray,kpimm,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    # cv2.imshow("SIFT K P ",roi_read_image)
 
     ART_tag_file_read_img = cv2.imread("../data/TAG.jpg")
     ART_tag_file_read_img=cv2.resize(ART_tag_file_read_img,(128,128))
@@ -208,23 +206,55 @@ def detectARTag(read_image):
     matches = bf.match(des,dest)
     matches = sorted(matches, key = lambda x:x.distance)
 
-    img3 = cv2.drawMatches(gray, kp, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
+    img3 = cv2.drawMatches(roi_read_image, kp_roi, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
     plt.imshow(img3),plt.show()
+
+    kp=[]
+    for ckp in kp_roi:
+        kp.append(cv2.KeyPoint(ckp.pt[0] + keypoint[1]-radius, ckp.pt[1]+keypoint[0] - radius, ckp.size))
+        # kp[i][1] += keypoint[0]-radius
+        # kp[i][0] += keypoint[1]-radius
+
+    img3 = cv2.drawMatches(read_image, kp, ART_tag_file_read_img, kpt, matches[:-1], ART_tag_file_read_img, flags=2)
+    plt.imshow(img3),plt.show()
+
     ART_tag_file_op = ART_tag_file_read_img.copy()
     cv2.drawKeypoints(ART_tag_gray,kpt,ART_tag_file_op,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     cv2.imshow("SIFT KP ",ART_tag_file_op)
     
+    # store all the good matches as per Lowe's ratio test.
+    # good = []
+    if len(matches)<4:
+        return
+    # for m in matches:
+    #     if m.distance < 0.7:
+    #         good.append(m)
 
+    # # for m,n in matches:
+    # #     if m.distance < 0.7*n.distance:
+    # #         good.append(m)
 
-    return
+    # print("good matches: ",len(good))
+    # MIN_MATCH_COUNT = 0
+    # if len(good)>=MIN_MATCH_COUNT:
+    #     src_pts = np.float32([ kp[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+    #     dst_pts = np.float32([ kpt[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+    #     H = computeHomography(src_pts, dst_pts)
+    # else:
+    #     return
+
+    src_pts = np.float32([ kp[m.queryIdx].pt for m in matches ]).reshape(-1,1,2)
+    dst_pts = np.float32([ kpt[m.trainIdx].pt for m in matches ]).reshape(-1,1,2)
+    # H = computeHomography(src_pts, dst_pts)
+    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
     # AR_corners=
     
-    # Compute Homography
+    # # Compute Homography
     size = 128  #read_image.shape[0]
-    destination_points = np.array([[0,0],[size,0],[size,size],[0,size]]).reshape(-1,1,2)
-    H = computeHomography(AR_corners, np.float32(destination_points))
-    # H,mask = cv2.findHomography(np.float32(AR_corners), np.float32(destination_points))
+    # destination_points = np.array([[0,0],[size,0],[size,size],[0,size]]).reshape(-1,1,2)
+    # H = computeHomography(AR_corners, np.float32(destination_points))
+    # # H,mask = cv2.findHomography(np.float32(AR_corners), np.float32(destination_points))
 
     
     # warp the AR from the image plane to custom square plane like Bird's eye view representation. 
@@ -235,8 +265,8 @@ def detectARTag(read_image):
     #Enlarge image for viewing 
     AR_Tag_focused  = cv2.resize(AR_Tag_focused, (128,128)) 
         
-    # cv2.imshow("Warped Tag", AR_Tag_focused)
-    # cv2.waitKey(1000)    
+    cv2.imshow("Warped Tag", AR_Tag_focused)
+    cv2.waitKey(1000)    
 
     ## Print the images:
     if savePlotFFT:
@@ -245,12 +275,12 @@ def detectARTag(read_image):
         plots.set(magnitude_spectrum,"FFT magnitude")
         plots.set(magnitude_spectrum_hp,'FFT magnitude after applying \nHigh pass filter ')
         plots.set(filtered_image,'Detected Edges')
-        # plots.set(cv2.resize(contours_img,(200,200)), "Contours detected in the whole image")
+        plots.set(blobs, "blob")
         # plots.set(contours_AR_code_img, "Contours of AR code,\nprocessed from (d)")
         # plots.set( cv2.cvtColor(AR_corners_img,cv2.COLOR_BGR2RGB), "4 Corners of AR code")
         # plots.set(AR_Tag,'AR Tag in image space')
         plots.set(AR_Tag_focused,'AR Tag after \nHomography Transformation')   
-        plots.save('../outputs/Q1/','ARDetectionUsingFFt.png')
+        plots.save('../outputs/Q1/','ARDetectionUsingFFt1.png')
         savePlotFFT=False
     success = True
     return success, H, AR_Tag_focused
