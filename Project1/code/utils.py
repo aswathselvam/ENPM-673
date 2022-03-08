@@ -166,7 +166,7 @@ def detectARTag(read_image):
 
 
     #center of mask 
-    radius = int(keypoint[2]/2)
+    radius = int(keypoint[2])
     centre = ( int(keypoint[0]), int(keypoint[1]) )
     print(centre,radius)
 
@@ -178,14 +178,14 @@ def detectARTag(read_image):
     roi_gray = gray[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
     roi_read_image = read_image[int(keypoint[0])-radius:int(keypoint[0]) +  radius, int(keypoint[1])-radius:int(keypoint[1]) + radius]
 
-    kp, des= sift.detectAndCompute(gray,None)
+    kp, des= sift.detectAndCompute(roi_gray,None)
     print("kps:", len(kp))
     # gray_op = read_image.copy()
     gray_op = roi_read_image.copy()
     cv2.drawKeypoints(roi_gray,kp,roi_read_image,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     cv2.imshow("SIFT K P ",roi_read_image)
 
-    ART_tag_file_read_img = cv2.imread("../data/ARTag.png")
+    ART_tag_file_read_img = cv2.imread("../data/TAG.jpg")
     ART_tag_file_read_img=cv2.resize(ART_tag_file_read_img,(128,128))
     ART_tag_gray = cv2.cvtColor(ART_tag_file_read_img, cv2.COLOR_BGR2GRAY)
 
