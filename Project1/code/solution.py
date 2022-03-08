@@ -34,8 +34,9 @@ def main():
         ret, frame = cap.read()
         if ret:
             frame  = cv2.resize(frame, (512,512))
-            cv2.waitKey(1)
             detectARTag(frame)
+            cv2.waitKey(1)
+
             #-----------------Problem 1 A----------------#
             # success, H, tag = detectARTag(frame)
             # if success:
