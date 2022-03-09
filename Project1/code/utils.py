@@ -94,7 +94,7 @@ def detectARTag(read_image):
     # get convex hull from  contour image white pixels
     points = np.column_stack(np.where(canny.transpose() > 0))
     hull_pts = cv2.convexHull(points)
-    
+
     # https://stackoverflow.com/questions/67434707/how-to-fill-the-hollow-lines-opencv
     # draw hull on copy of input and on black background
     hull = read_image.copy()
@@ -140,13 +140,14 @@ def detectARTag(read_image):
     corner_list = []
     for x, y, angle in corner_info:
         corner_list.append([x,y])
-    print(corner_list)
 
     # define input points from (sorted) corner_list
     src_pts = np.float32(corner_list)
     dst_pts = np.float32([[0,0], [size,0], [size,size], [0,size]])
 
-
+    # Zoom into the TAG:
+    tag_slice= read_image[corner_list[0][1]+50:corner_list[2][1]-50,corner_list[0][0]-20:corner_list[2][0]+20]
+    cv2.imshow("Tag slice ",tag_slice)
     #----------------------------------------------------------------------------------------#
     H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
@@ -167,7 +168,7 @@ def detectARTag(read_image):
     AR_Tag_focused  = cv2.resize(AR_Tag_focused, (128,128)) 
         
     cv2.imshow("Warped Tag", AR_Tag_focused)
-    cv2.waitKey(1000)    
+    # cv2.waitKey(1000)    
 
     ## Print the images:
     if savePlotFFT:

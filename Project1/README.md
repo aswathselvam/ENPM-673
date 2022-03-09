@@ -14,7 +14,12 @@ pip3 install -r requirements.txt
 cd code
 python3 solution.py
 ```
+- utils.py contains code without findcontours 
 
+### Extra credit:
+- Clone the dexined github repo inside 'code' folder
+- Place a test image inside 'DexiNed/data' folder and run the image
+- Canny edge output was obtained with the script: code/extracredit.py
 ## Outputs:
 ### Problem 1:
 AR Code detection:
