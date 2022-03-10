@@ -25,19 +25,24 @@ def main():
 
     if(not (os.path.isdir(savepath))):
         os.makedirs(savepath)
-    
-    data_histogramEQ = []
+
+    images_histogramEQ = []
     for image_file in sorted(glob.glob(data_histogramEQ_path+"*.png")):
         image = cv2.imread(image_file)
         image = cv2.resize(image, (image.shape[1]//2,image.shape[0]//2 ) )
         # cv2.imshow("Histogram equalization data", image)
         # cv2.waitKey(100)
-        data_histogramEQ.append(image)
+        images_histogramEQ.append(image)
 
     #---------Problem 1: Histogram equalization-------------#
     lanePredictor = LanePredictor()
-    lanePredictor.histogramEqualization(data_histogramEQ, mode=lanePredictor.HISTOGRAM_EQUALIZATION)
-    lanePredictor.histogramEqualization(data_histogramEQ, mode=lanePredictor.ADAPTIVE_HISTOGRAM_EQUALIZATION)
+    BOTH=True #
+    histogramWriter = cv2.VideoWriter('../outputs/'+"histogram_and_adaptive.mp4",cv2.VideoWriter_fourcc(*'mp4v'), 1, (-1,-1))
+    for image in images_histogramEQ:
+        outimage = lanePredictor.histogramEqualization([image], BOTH=BOTH)
+        histogramWriter.write(image)
+    histogramWriter.release()
+
 
     out = cv2.VideoWriter('../outputs/'+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 15, (800,640))    
     cap = cv2.VideoCapture(video_whiteline_path)

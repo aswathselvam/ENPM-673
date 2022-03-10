@@ -42,6 +42,4 @@ class ImageGrid():
                 finalimage = np.vstack((finalimage, colimages))
 
         self.gridimage=finalimage
-        cv2.imshow('Final Image', finalimage)
-        cv2.waitKey(0)
-        return
+        return self.gridimage

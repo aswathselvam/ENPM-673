@@ -51,14 +51,14 @@ class LanePredictor:
         # Apply gamma correction using the lookup table
         return cv2.LUT(image, gammaTable)
 
-    def histogramEqualization(self,data,mode,BOTH=True):
+    def histogramEqualization(self,data,mode="Histogram Equalization",BOTH=True):
         """
         Computes Histogram Equalization
         """
         gridimages={}
         titles=["Original Image","Histogram Equalized", "Adaptive Equalization"]
         for image in data:
-            cv2.imshow("Original Image", (image))
+            # cv2.imshow("Original Image", (image))
             gridimages[titles[0]]=image
 
             if mode==self.HISTOGRAM_EQUALIZATION or BOTH:
@@ -84,16 +84,15 @@ class LanePredictor:
                     else:
                         im_eqs = np.dstack((im_eqs,im_eq))
 
-                cv2.imshow("Equalilzed Image", np.uint8(im_eqs))
-                cv2.waitKey(50)
+                # cv2.imshow("Equalilzed Image", np.uint8(im_eqs))
+                # cv2.waitKey(50)
                 gridimages[titles[1]]=np.uint8(im_eqs)
-                # return im_eqs
 
             if mode==self.ADAPTIVE_HISTOGRAM_EQUALIZATION or BOTH:
                 im_eqs = self.adjustGamma(image, gamma = 2.0)
-                cv2.imshow("Adaptive Equalilzed Image", np.uint8(im_eqs))
+                # cv2.imshow("Adaptive Equalilzed Image", np.uint8(im_eqs))
+                # cv2.waitKey(50)
                 gridimages[titles[2]]=np.uint8(im_eqs)
-                cv2.waitKey(50)
             
             break
 
@@ -104,7 +103,7 @@ class LanePredictor:
             if image is not None:
                 imagegrid.set(0,counter,image,titles[i])
                 counter+=1
-        imagegrid.generate(scale=200)    
+        return imagegrid.generate(scale=200)    
 
     def detectStraightLane(self,frame):
         """
