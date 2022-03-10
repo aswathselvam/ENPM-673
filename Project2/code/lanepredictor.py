@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 # import cupy as cp
-
+from utils import ImageGrid
 class LanePredictor:
 
     def __init__(self,data=None,video=None):
@@ -11,7 +11,6 @@ class LanePredictor:
         self.ADAPTIVE_HISTOGRAM_EQUALIZATION = "Adaptive Histogram Equalization"
         self.histogram_profile=[None, None, None]
         self.USE_HISTOGRAM_MEMORY=False
-
 
     def histogram(self, im_flat):
         # RANGE=256
@@ -52,14 +51,17 @@ class LanePredictor:
         # Apply gamma correction using the lookup table
         return cv2.LUT(image, gammaTable)
 
-    def histogramEqualization(self,data,mode):
+    def histogramEqualization(self,data,mode,BOTH=False):
         """
         Computes Histogram Equalization
         """
+        gridimages={}
+        titles=["Original Image","Histogram Equalized", "Adaptive Equalization"]
         for image in data:
             cv2.imshow("Original Image", (image))
+            gridimages[titles[0]]=image
 
-            if mode==self.HISTOGRAM_EQUALIZATION:
+            if mode==self.HISTOGRAM_EQUALIZATION or BOTH:
 
                 for i in range(image.shape[2]):
                     im_channel = image[:,:,i]
@@ -84,18 +86,29 @@ class LanePredictor:
 
                 cv2.imshow("Equalilzed Image", np.uint8(im_eqs))
                 cv2.waitKey(50)
+                gridimages[titles[1]]=np.uint8(im_eqs)
                 # return im_eqs
 
-            elif mode==self.ADAPTIVE_HISTOGRAM_EQUALIZATION:
+            if mode==self.ADAPTIVE_HISTOGRAM_EQUALIZATION or BOTH:
                 im_eqs = self.adjustGamma(image, gamma = 2.0)
                 cv2.imshow("Adaptive Equalilzed Image", np.uint8(im_eqs))
+                gridimages[titles[2]]=np.uint8(im_eqs)
                 cv2.waitKey(50)
+            
+            break
+
+        imagegrid=ImageGrid(1,len(gridimages))
+        for i in range(len(titles)):
+            image = gridimages.get(titles[i])
+            if image is not None:
+                imagegrid.set(0,i,image,titles[i])
+        imagegrid.generate()    
 
     def detectStraightLane(self,frame):
         """
         Detects straight Lanes in a given frame
         """
-        
+
         pass
 
 
