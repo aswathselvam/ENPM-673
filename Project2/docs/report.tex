@@ -25,18 +25,30 @@
 \newlist{contract}{enumerate}{10}
 \setlist[contract]{label*=\arabic*.}
 \setlistdepth{10} 
-	
+
+\begin{figure}[b]
+	\centering
+	\includegraphics[width=\textwidth]{/histogram_and_adaptive.jpg}
+	\caption{Original Image(left), Histogram Equalization(middle) and Adaptive Equalization(right)}
+	\label{fig:HistEQ}
+\end{figure}
+
 \begin{multicols}{2}
-		
-\section{Problem 1: Histogram equalization}
 
+\section{Histogram equalization}
+The 24 images that was provided is taken and histogram is calculated with 256 bins, in all 3 channels-red, green and blue. Next, the cumulative distribution is calculated by summing all this bins till the current bin. This distribution is normalized and with a maximum  value of 256. A copy of this normalized value is also saved, this reduces the computation time as it can directly be applied to the subsequent $N$ video as they will have similar color distribution. The Adaptive equalization perform Gamma correction on the given image. The gamma correction of input pixel to output image is shown in Equation \ref{eq:gamma}. I took $\gamma$ is taken as 2.0.  The comparison between Original image, Histogram Equalized image and Adaptive Equalized image is shown in Figure \ref{fig:HistEQ} in the same order.
 
-\section{Problem 2: Straight Lane Detection}
-
-
-\section{Problem 3: Predict Turn}	
+\begin{equation} \label{eq:gamma}
+I_{out}=I_{in}^{\gamma}
+\end{equation}
 	
-		
+\section{Straight Lane Detection}
+
+\blindtext
+\section{Predict Turn}	
+
 \end{multicols}
+
+
 	
 \end{document}
