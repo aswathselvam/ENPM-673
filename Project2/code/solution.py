@@ -37,19 +37,20 @@ def main():
 
     #---------Problem 1: Histogram equalization-------------#
     lanePredictor = LanePredictor()
-    BOTH=True #
-    outimage = lanePredictor.histogramEqualization([images_histogramEQ[0]], BOTH=BOTH)
-    histogramWriter = cv2.VideoWriter(savepath+"histogram_and_adaptive.mp4",cv2.VideoWriter_fourcc(*'mp4v'), 5, (outimage.shape[1],outimage.shape[0]))
-    for image in images_histogramEQ:
-        outimage = lanePredictor.histogramEqualization([image], BOTH=BOTH)
-        histogramWriter.write(outimage)
-    histogramWriter.release()
-    cv2.imwrite(savepath+"histogram_and_adaptive.jpg",outimage)
+    # BOTH=True #
+    # outimage = lanePredictor.histogramEqualization([images_histogramEQ[0]], BOTH=BOTH)
+    # histogramWriter = cv2.VideoWriter(savepath+"histogram_and_adaptive.mp4",cv2.VideoWriter_fourcc(*'mp4v'), 5, (outimage.shape[1],outimage.shape[0]))
+    # for image in images_histogramEQ:
+    #     outimage = lanePredictor.histogramEqualization([image], BOTH=BOTH)
+    #     histogramWriter.write(outimage)
+    # histogramWriter.release()
+    # cv2.imwrite(savepath+"histogram_and_adaptive.jpg",outimage)
 
 
 
     cap = cv2.VideoCapture(video_whiteline_path)
-    videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (cap.get(3),cap.get(4)))    
+    ret, frame=cap.read()
+    videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (frame.shape[1],frame.shape[0]))  
 
     while(True):
         ret, frame = cap.read()
@@ -58,10 +59,12 @@ def main():
             frame  = cv2.resize(frame, (512,512))
             out=lanePredictor.detectStraightLane(frame)
             # cv2.imshow('Lanes', out)
-            # cv2.waitKey(10)
-        else:
+            if cv2.waitKey(0) & 0xFF == ord('q'):
+                break
+        else: 
             break
 
+    return 
 
     cap = cv2.VideoCapture(video_whiteline_path)
     videoWriter = cv2.VideoWriter(savepath+'challenge.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (cap.get(3),cap.get(4)))    

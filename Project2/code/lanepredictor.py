@@ -1,7 +1,9 @@
+from attr import NOTHING
 import cv2
 import numpy as np
 # import cupy as cp
 from utils import ImageGrid
+from preprocess import *
 class LanePredictor:
 
     def __init__(self,data=None,video=None):
@@ -35,7 +37,7 @@ class LanePredictor:
         return ((c - c.min()) * 255) / (c.max() - c.min())
         
 
-    def adjustGamma(self, image, gamma=1.0):
+    def adjustGamma(self, image, gamma=2.0):
         """
         https://stackoverflow.com/questions/33322488/how-to-change-image-illumination-in-opencv-python
         
@@ -109,7 +111,46 @@ class LanePredictor:
         """
         Detects straight Lanes in a given frame
         """
+        cv2.namedWindow('image')
+        def nothing(x):
+            pass
+        
+        # create trackbars for color change
+        cv2.createTrackbar('L','image',0,255,nothing)
+        cv2.createTrackbar('A','image',0,255,nothing)
+        cv2.createTrackbar('B','image',0,255,nothing)
 
+        # create switch for ON/OFF functionality
+        switch = '0 : OFF \n1 : ON'
+        cv2.createTrackbar(switch, 'image',0,1,nothing)
+
+        lab_img=frame
+        while True:
+            # lab_img = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+            lab_img=frame
+            # get current positions of four trackbars
+            lpos = cv2.getTrackbarPos('L','image')
+            apos = cv2.getTrackbarPos('A','image')
+            bpos = cv2.getTrackbarPos('B','image')
+            s = cv2.getTrackbarPos(switch,'image')
+
+
+
+            L, a, b = cv2.split(lab_img)
+            ret,thresh_l = cv2.threshold(L,lpos,255,cv2.THRESH_BINARY)
+            ret,thresh_a = cv2.threshold(a,apos,255,cv2.THRESH_BINARY)
+            ret,thresh_b = cv2.threshold(b,bpos,255,cv2.THRESH_BINARY)
+            # ret,lab_thresh_img = cv2.threshold(lab_img[:-1],200,255,cv2.THRESH_BINARY)
+            lab_img = cv2.merge([thresh_l,thresh_a,thresh_b])
+            # ret,lab_thresh_img = cv2.threshold(lab_img[:-2],20,255,cv2.THRESH_BINARY)
+            # lab_img[:-2] = lab_thresh_img
+            # lab_img = cv2.cvtColor(lab_img, cv2.COLOR_LAB2BGR)
+            # lab_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # lab_img = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+            cv2.imshow("image", lab_img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
         pass
 
 
@@ -118,4 +159,4 @@ class LanePredictor:
         Detects Curvatures of Lanes in a given frame
         """
 
-        pass
+        pass 
