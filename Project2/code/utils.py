@@ -31,7 +31,9 @@ class ImageGrid():
                 aspect_ratio=image.shape[1]//image.shape[0] # Height/Width
                 col_img = cv2.resize(image, (scale*aspect_ratio,scale))
                 cv2.putText(col_img,self.titles[row,col], (0,30), \
-                    cv2.FONT_HERSHEY_COMPLEX,fontScale=0.7,color=(80,100,255),thickness=2,lineType=cv2.LINE_8 )
+                    cv2.FONT_HERSHEY_COMPLEX,fontScale=0.71,color=(0,0,0),thickness=3,lineType=cv2.LINE_8 )
+                cv2.putText(col_img,self.titles[row,col], (0,30), \
+                    cv2.FONT_HERSHEY_COMPLEX,fontScale=0.7,color=(80,80,255),thickness=2,lineType=cv2.LINE_8 )
                 if len(colimages)<1:
                     colimages = col_img
                 else:

@@ -1,5 +1,6 @@
 import cv2
 import os
+from cv2 import VideoWriter
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft, ifft
@@ -37,29 +38,33 @@ def main():
     #---------Problem 1: Histogram equalization-------------#
     lanePredictor = LanePredictor()
     BOTH=True #
-    histogramWriter = cv2.VideoWriter('../outputs/'+"histogram_and_adaptive.mp4",cv2.VideoWriter_fourcc(*'mp4v'), 1, (-1,-1))
+    outimage = lanePredictor.histogramEqualization([images_histogramEQ[0]], BOTH=BOTH)
+    histogramWriter = cv2.VideoWriter(savepath+"histogram_and_adaptive.mp4",cv2.VideoWriter_fourcc(*'mp4v'), 5, (outimage.shape[1],outimage.shape[0]))
     for image in images_histogramEQ:
         outimage = lanePredictor.histogramEqualization([image], BOTH=BOTH)
-        histogramWriter.write(image)
+        histogramWriter.write(outimage)
     histogramWriter.release()
+    cv2.imwrite(savepath+"histogram_and_adaptive.jpg",outimage)
 
 
-    out = cv2.VideoWriter('../outputs/'+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 15, (800,640))    
+
     cap = cv2.VideoCapture(video_whiteline_path)
+    videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (cap.get(3),cap.get(4)))    
 
     while(True):
         ret, frame = cap.read()
         if ret:
             #-----------Problem 2: Straight Lane Detection----------#
             frame  = cv2.resize(frame, (512,512))
-            lanePredictor.detectStraightLane(frame)
-
+            out=lanePredictor.detectStraightLane(frame)
+            # cv2.imshow('Lanes', out)
+            # cv2.waitKey(10)
         else:
             break
 
 
-    out = cv2.VideoWriter('../outputs/'+'challenge.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 15, (800,640))    
-    cap = cv2.VideoCapture(video_challenge_path)
+    cap = cv2.VideoCapture(video_whiteline_path)
+    videoWriter = cv2.VideoWriter(savepath+'challenge.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (cap.get(3),cap.get(4)))    
 
     while(True):
         ret, frame = cap.read()
