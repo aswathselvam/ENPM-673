@@ -51,7 +51,7 @@ class LanePredictor:
         # Apply gamma correction using the lookup table
         return cv2.LUT(image, gammaTable)
 
-    def histogramEqualization(self,data,mode,BOTH=False):
+    def histogramEqualization(self,data,mode,BOTH=True):
         """
         Computes Histogram Equalization
         """
@@ -98,11 +98,13 @@ class LanePredictor:
             break
 
         imagegrid=ImageGrid(1,len(gridimages))
+        counter=0
         for i in range(len(titles)):
             image = gridimages.get(titles[i])
             if image is not None:
-                imagegrid.set(0,i,image,titles[i])
-        imagegrid.generate()    
+                imagegrid.set(0,counter,image,titles[i])
+                counter+=1
+        imagegrid.generate(scale=200)    
 
     def detectStraightLane(self,frame):
         """

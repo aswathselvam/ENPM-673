@@ -17,17 +17,21 @@ class ImageGrid():
         self.images={}
         self.titles={}
         pass
-    def set(self,x,y,image,title=None):
+
+    def set(self,x,y,image,title=''):
         self.images[(x,y)] = image.copy()
         self.titles[x,y] = title
 
-    def generate(self):
+    def generate(self,scale=300):
         finalimage=[]
         for row in range(self.rows):
             colimages=[]
             for col in range(self.columns):
                 image=self.images[(row,col)]
-                col_img = cv2.resize(image, (image.shape[1]//(self.columns+1),image.shape[0]//(self.rows+1)) )
+                aspect_ratio=image.shape[1]//image.shape[0] # Height/Width
+                col_img = cv2.resize(image, (scale*aspect_ratio,scale))
+                cv2.putText(col_img,self.titles[row,col], (0,30), \
+                    cv2.FONT_HERSHEY_COMPLEX,fontScale=0.7,color=(80,100,255),thickness=2,lineType=cv2.LINE_8 )
                 if len(colimages)<1:
                     colimages = col_img
                 else:
@@ -36,7 +40,7 @@ class ImageGrid():
                 finalimage = colimages
             else:
                 finalimage = np.vstack((finalimage, colimages))
-                
+
         self.gridimage=finalimage
         cv2.imshow('Final Image', finalimage)
         cv2.waitKey(0)
