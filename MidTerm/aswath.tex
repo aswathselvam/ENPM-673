@@ -40,7 +40,7 @@
 		\begin{figure}[H]
 			\centering
 			\includegraphics[width=\columnwidth]{/output1.png}
-			\caption{AR Tag localization with FFT and Homography}
+			\caption{Counting coins in the image}
 			\label{fig:op1}
 		\end{figure}
 
@@ -55,6 +55,12 @@
 		\end{figure*}
 		
 		\end{comment}
+		
+		
+		\section{Question 2}
+		There are two images given, one of the images is taken by translating the camera to the left side. We are going to stitch them together. 
+		
+		First, I converted the images to grayscale. Then, I used Feature detection to find significant Features in the image. Using the keypoints and descriptors obtained, I matched the keypoints using a Brute force matcher with L1 norm, this gives the relation between the points in the Image A and Image B. I used opencv findHomography() to find the Homography between the source and destination points. Then, with the Homograhy matrix, I warped the images using warpPerspective() function. Figure \ref{fig:op2} shows the complete process of Feature detection, Keypoint Matching, finding Homography and Warping the final image.
 		
 		The homography transformation matrix is given by:
 		\[
@@ -80,9 +86,18 @@
 		\end{bmatrix}
 		\]
 		
-		\section{Problem 2}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[width=\columnwidth]{/output2.png}
+			\caption{Stitching two images}
+			\label{fig:op2}
+		\end{figure}
 		
-	
+		
+		
+		\section{Question 3}
+		
+		
 		
 		\begin{itemize}
 		\item Firstly, the image is resized to the dimension of 200 x 200 to match the world coordinates.
