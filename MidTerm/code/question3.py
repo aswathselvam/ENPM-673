@@ -21,7 +21,7 @@ img_pts = np.array([[757, 13],[758, 15],[758,86 ],[759,66],[1190,172],[329,1041]
 world_pts = np.array([[0, 0,0,1 ],[0, 3, 0,1],[0,7,0,1],[0,11,0,1],[7,1,0,1],[0,11,7,1],[7,9,0,1],[0,1,7,1]])
 
 #-----------------P matrix----------------------#
-A = np.empty([3,12],dtype=float)
+A = np.empty([0,12],dtype=float)
 O = np.zeros(4,dtype=float)
 for x,X in zip(img_pts,world_pts):
     u = x[0]
@@ -38,7 +38,6 @@ for x,X in zip(img_pts,world_pts):
     A=np.vstack((A,i))
     # print("A\n",A)
     # input()
-
 print("A: ",A.shape)
 U, D, V = np.linalg.svd(A)
 m, n = A.shape
@@ -47,12 +46,83 @@ print("U: ",U.shape)
 print("D: ",D.shape, "\n",  D)
 print("V: ",V.shape, "\n",  V.shape)
 
-print("\nP is in the last column of V:\n",  V[:,n-1])
-p1 = V[0:4,n-1]
-p2 = V[4:8,n-1]
-p3 = V[8:12,n-1]
+print("\nP is in the last column of V:\n",  V[:,-1])
+p1 = V[0:4,-1]
+p2 = V[4:8,-1]
+p3 = V[8:12,-1]
 
 P = np.array([p1,p2,p3])
+# P = P * np.sign(np.linalg.det(P[:3,:3]))
 print("\nFinal P matrix: \n",P)
 
 
+#------------C matrix---------------#
+#P*C=0
+U, D, V = np.linalg.svd(P)
+m, n = P.shape
+P_reconstructed = U[:,:n] @ np.diag(D) @ V[:m,:]
+C = V[:,n-1]/V[-1,-1]; C = C[:-1]
+# C = V[:,n-1]; # C = C[:-1]
+# print("\nC is in the last column of V:\n",  C)
+
+#-----------K, R matrix----------------#
+
+#M=KR
+#K is upper Triangular matrix 
+#R is othogonal matrix
+
+def RQ(M):
+    [Q,R] = np.linalg.qr(np.flipud(M.T))
+    R = np.flipud(R.T)
+    R = np.fliplr(R)
+    Q = Q.T
+    Q = np.flipud(Q)
+    return R, Q
+
+K,R = RQ(P[:3,:3])
+D = np.diag(np.sign(np.diag(K)))
+K = K * D
+R = D * R
+K = K/K[-1,-1]
+
+print("K matrix: \n", K)
+
+#-------------- t -----------------#
+t = -R * C
+print("Translation is: \n", t)
+
+
+
+
+"""
+For reference:
+
+MATLAB Code:
+
+
+img_pts = [757, 13; 758, 15; 758,86 ; 759,66 ; 1190,172 ; 329,1041; 1204,850; 340,59];
+world_pts = [0, 0,0; 0, 3, 0; 0,7,0; 0,11,0; 7,1,0; 0,11,7; 7,9,0; 0,1,7];
+
+
+[P,error]=estimateCameraMatrix(img_pts,world_pts);
+P = P';
+P = P * sign(det(P(1:3, 1:3)));
+[K, R] = rq(P(1:3,1:3));
+D = diag(sign(diag(K)));
+K = K*D
+K = K/K(end,end)
+
+function [R,Q] = rq(M)
+    [Q,R] = qr(rot90(M,3));
+    R = rot90(R,2)';
+    Q = rot90(Q);
+end
+
+
+
+
+
+
+
+
+"""

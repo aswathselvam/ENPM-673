@@ -1,4 +1,3 @@
-from turtle import distance
 import cv2
 import numpy as np
 from utils import Plot, drive_downloader
