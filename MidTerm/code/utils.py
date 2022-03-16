@@ -3,6 +3,7 @@ import string
 import cv2
 import os
 from google_drive_downloader import GoogleDriveDownloader as gdd
+import numpy as np
 
 ORB = 'orb'
 SIFT = 'sift'
@@ -17,6 +18,21 @@ def getKeyPoints(img,TYPE):
         # compute the descriptors with ORB
         kp, des = orb.compute(img, kp)
         return kp, des
+
+def trimImage(frame):
+    #crop top
+    if not np.sum(frame[0]):
+        return trimImage(frame[1:])
+    #crop top
+    if not np.sum(frame[-1]):
+        return trimImage(frame[:-2])
+    #crop top
+    if not np.sum(frame[:,0]):
+        return trimImage(frame[:,1:])
+    #crop top
+    if not np.sum(frame[:,-1]):
+        return trimImage(frame[:,:-2])
+    return frame
 
 class Plot:
     def __init__(self,rows,columns):
