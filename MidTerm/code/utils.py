@@ -4,6 +4,19 @@ import cv2
 import os
 from google_drive_downloader import GoogleDriveDownloader as gdd
 
+ORB = 'orb'
+SIFT = 'sift'
+
+def getKeyPoints(img,TYPE):
+    # https://docs.opencv.org/4.x/db/d27/tutorial_py_table_of_contents_feature2d.html
+    if TYPE==ORB:
+        # Initiate ORB detector
+        orb = cv2.ORB_create()
+        # find the keypoints with ORB
+        kp = orb.detect(img,None)
+        # compute the descriptors with ORB
+        kp, des = orb.compute(img, kp)
+        return kp, des
 
 class Plot:
     def __init__(self,rows,columns):
