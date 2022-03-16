@@ -1,16 +1,11 @@
 import cv2
 import numpy as np
 import os.path
-from google_drive_downloader import GoogleDriveDownloader as gdd
-from utils import Plot, createFolder
+from utils import Plot, drive_downloader
 
 
-image_file = './Q1image.png'
-
-if not os.path.isfile(image_file): 
-    gdd.download_file_from_google_drive(file_id='11FwkdoLVlf27uCKXC4lj5T_xh7pYVdul',
-                                        dest_path='./Q1image.png',
-                                        unzip=False)
+image_file = '../data/Q1image.png'
+drive_downloader('11FwkdoLVlf27uCKXC4lj5T_xh7pYVdul',image_file)
 
 image = cv2.imread(image_file)
 print(image.shape)

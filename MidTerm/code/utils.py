@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import string
 import cv2
 import os
+from google_drive_downloader import GoogleDriveDownloader as gdd
+
 
 class Plot:
     def __init__(self,rows,columns):
@@ -48,3 +50,10 @@ class Plot:
 def createFolder(path):
     if not os.path.exists(path):
         os.makedirs(path)
+
+
+def drive_downloader(file_id, image_file):
+    if not os.path.isfile(image_file): 
+        gdd.download_file_from_google_drive(file_id=file_id,
+                                            dest_path=image_file,
+                                            unzip=False)
