@@ -10,21 +10,25 @@ class KMeans:
         self.image = image
         self.means = np.random.randint(255, size=(K, 3))
         print("Randomly initialized means are: \n", self.means)
-        self.pts=np.empty((0,3), int)
-        for i in range(self.image.shape[0]):
-            for j in range(self.image.shape[1]):
-                self.pts = np.append(self.pts, [self.image[i,j,:].copy()],axis=0)
+        self.pts=self.getPointsfromImage(self.image)
         print("Number of Feature Points: ",self.pts.shape)
-        # self.visualizeData()
+        # self.visualizeData(self.pts)
+    
+    def getPointsfromImage(self,image):
+        pts = np.empty((0,3), int)
+        for i in range(image.shape[0]):
+            for j in range(image.shape[1]):
+                pts = np.append(pts, [image[i,j,:].copy()],axis=0)
+        return pts
 
-    def visualizeData(self):
+    def visualizeData(self,pts):
         fig = plt.figure()
         ax = fig.gca(projection='3d')
-        for pt in self.pts:
+        for pt in pts:
             x = pt[0]
             y = pt[1]
             z = pt[2]
-            ax.scatter(x, y, z, marker='o',c=np.array([pt])/255)
+            ax.scatter(x, y, z, marker='o', s=200,c=np.array([pt])/255)
         ax.set_xlabel('Red')
         ax.set_ylabel('Green')
         ax.set_zlabel('Blue')
@@ -35,7 +39,7 @@ class KMeans:
         dist = np.linalg.norm(p1-p2)
         return dist
 
-    def cluster(self, target_iters=10): 
+    def train(self, target_iters=10): 
         mean_diff = float('inf')
         iterations = 0
         self.THRESHOLD = 10
@@ -60,8 +64,8 @@ class KMeans:
                 self.means[key] = mean
             print("Iteration ", iterations, " complete")
             iterations+=1
-        pass
-
+        
+        self.visualizeData(self.means)
 
     def classify(self,image): 
         classes = image.copy()
@@ -76,7 +80,7 @@ class KMeans:
                         min_mean_idx = idx
 
                 classes[i,j,:] = self.means[min_mean_idx]
-        cv2.imshow("Classified image", classes)
+        cv2.imshow("Classified image", cv2.cvtColor(classes,cv2.COLOR_BGR2RGB))
         return classes
 
 image_file = '../data/Q4image.png'
@@ -85,15 +89,14 @@ drive_downloader('1Fr78nf4LNAfDWU4R4GgGEuS7Rbk5tG_H',image_file)
 image = cv2.imread(image_file)
 image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
 image = cv2.resize(image,(100,100))
-cv2.imshow("Original Image",image)
+cv2.imshow("Original Image",cv2.cvtColor(image,cv2.COLOR_RGB2BGR))
 print("Image shape",image.shape)
 
 K=4
 image = np.array(image)
 kmeans = KMeans(K, image)
-kmeans.cluster(100)
+kmeans.train(100)
 classes = kmeans.classify(image)
-
 
 plot = Plot(2,1)
 plot.set(image, "Original Image")
