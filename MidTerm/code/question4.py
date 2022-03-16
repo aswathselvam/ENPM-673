@@ -36,26 +36,67 @@ class KMeans:
         return dist
 
     def cluster(self, target_iters=10): 
+        mean_diff = float('inf')
+        iterations = 0
+        self.THRESHOLD = 10
+        while(mean_diff<self.THRESHOLD or iterations<target_iters):
+            D =  {}  
+            for pt in self.pts:
+                mindist=float('inf')
+                min_mean_idx = None
+                for idx, mean in enumerate(self.means):
+                    dist = self.distance(mean,pt)
+                    if dist<mindist:
+                        mindist = dist
+                        min_mean_idx = idx
+                if min_mean_idx not in D:
+                    D[min_mean_idx] = []
+                D[min_mean_idx].append(pt)
+            
+            for key, val in D.items():
+                # print("key: ",key," lenfth: ", len(val),val[0])
+                mean = np.average(val,axis=0)
+                # print("Mean ",key," difference: ",self.means[key],mean)
+                self.means[key] = mean
+            print("Iteration ", iterations, " complete")
+            iterations+=1
         pass
 
+
+    def classify(self,image): 
+        classes = image.copy()
+        for i in range(self.image.shape[0]):
+            for j in range(self.image.shape[1]):
+                mindist=float('inf')
+                min_mean_idx = None
+                for idx, mean in enumerate(self.means):
+                    dist = self.distance(mean,self.image[i,j,:])
+                    if dist<mindist:
+                        mindist = dist
+                        min_mean_idx = idx
+
+                classes[i,j,:] = self.means[min_mean_idx]
+        cv2.imshow("Classified image", classes)
+        return classes
 
 image_file = '../data/Q4image.png'
 drive_downloader('1Fr78nf4LNAfDWU4R4GgGEuS7Rbk5tG_H',image_file)
 
 image = cv2.imread(image_file)
 image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-image = cv2.resize(image,(20,20))
+image = cv2.resize(image,(100,100))
 cv2.imshow("Original Image",image)
 print("Image shape",image.shape)
 
 K=4
 image = np.array(image)
 kmeans = KMeans(K, image)
-kmeans.cluster()
+kmeans.cluster(100)
+classes = kmeans.classify(image)
 
 
-plot = Plot(3,1)
+plot = Plot(2,1)
 plot.set(image, "Original Image")
-plot.set(image, "3D points")
-
+plot.set(classes, "Classified Image")
+plot.save("../outputs/","output4.png")
 cv2.waitKey(0)
