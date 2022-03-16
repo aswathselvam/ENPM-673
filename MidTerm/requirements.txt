@@ -1,0 +1,4 @@
+gdown==4.4.0
+googledrivedownloader==0.4
+numpy==1.17.4
+opencv_python==4.5.5.62
