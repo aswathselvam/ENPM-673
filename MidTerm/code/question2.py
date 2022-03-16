@@ -18,17 +18,19 @@ imageB = cv2.imread(image_fileB)
 grayA = cv2.cvtColor(imageA, cv2.COLOR_BGR2GRAY)
 kpsA,descA = getKeyPoints(grayA,ORB)
 siftImgA = imageA.copy()
-cv2.drawKeypoints(siftImgA,kpsA,siftImgA,(0,255,0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+cv2.drawKeypoints(siftImgA,kpsA,siftImgA)
 cv2.imshow("SIFT Keypoints on Image A ",siftImgA)
 
 grayB = cv2.cvtColor(imageB, cv2.COLOR_BGR2GRAY)
 kpsB,descB = getKeyPoints(grayB,ORB)
 siftImgB = imageA.copy()
-cv2.drawKeypoints(siftImgB,kpsB,siftImgB,(0,0,255),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+cv2.drawKeypoints(siftImgB,kpsB,siftImgB)
 cv2.imshow("SIFT Keypoints on Image B ",siftImgB)
 
 bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
 matches = bf.match(descA,descB)
+
+# Sort the matches in asceding order, i.e. closest matches first. 
 matches = sorted(matches, key = lambda x:x.distance)
 
 matches_img = np.zeros(imageA.shape)

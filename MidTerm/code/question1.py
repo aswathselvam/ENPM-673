@@ -8,7 +8,6 @@ image_file = '../data/Q1image.png'
 drive_downloader('11FwkdoLVlf27uCKXC4lj5T_xh7pYVdul',image_file)
 
 image = cv2.imread(image_file)
-print(image.shape)
 
 kernel = np.ones((20, 20), 'uint8')
 
