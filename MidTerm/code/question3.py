@@ -84,7 +84,6 @@ D = np.diag(np.sign(np.diag(K)))
 K = K * D
 R = D * R
 K = K/K[-1,-1]
-
 print("K matrix: \n", K)
 
 #-------------- t -----------------#
