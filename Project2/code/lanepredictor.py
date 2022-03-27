@@ -342,10 +342,10 @@ class LanePredictor:
                     cv2.circle(cdstP, tuple(top_right), 20, OLIVE, 3, cv2.LINE_AA)
                     
                     # #Draw circle at start position of line:
-                    cv2.circle(cdstP, tuple(bottom_left), 20, YELLOW, 3, cv2.LINE_AA)
+                    cv2.circle(cdstP, tuple(bottom_left), 20, RED, 3, cv2.LINE_AA)
 
                     # #Draw circle at end position of line:
-                    cv2.circle(cdstP, tuple(bottom_right), 20, OLIVE, 3, cv2.LINE_AA)
+                    cv2.circle(cdstP, tuple(bottom_right), 20, GREEN, 3, cv2.LINE_AA)
 
                     src = np.array([[top_left[0], top_left[1]], [top_right[0],top_right[1]], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]]  ])
                     dst = np.array([[0,0],[0,width],[height,width], [height,0]])
