@@ -266,8 +266,8 @@ class LanePredictor:
     
         # Copy edges to the images that will display the results in BGR
         cdst = cv2.cvtColor(dst, cv2.COLOR_GRAY2BGR)
-        cdstP = np.copy(cdst)
-             
+        cdstP = np.copy(frame)
+        
         lines = cv2.HoughLines(dst, 1, np.pi / 180, 150, None, 0, 0)
         
         if lines is not None:
@@ -313,7 +313,7 @@ class LanePredictor:
 
                                 
                 if not isinstance(self.long_line, type(None)) and not isinstance(self.short_line, type(None)):
-                    (leftline, rightline) =  (self.long_line, self.short_line) if self.long_line_bin < self.short_line_bin else (self.short_line, self.long_line)
+                    (leftline, rightline, color) =  (self.long_line, self.short_line, GREEN) if self.long_line_bin < self.short_line_bin else (self.short_line, self.long_line, RED)
                     
                     # Find the line intersections with the top and bottom of the image:
                     # x is opencv image columns, y is opencv image rows. 
@@ -329,12 +329,12 @@ class LanePredictor:
                     # cv2.line(cdstP, (rightline[0], rightline[1]), (rightline[2], rightline[3]), GREEN, 3, cv2.LINE_AA)
 
                     y=0
-                    top_left = [round((m_ll)*(y-y_ll)+x_ll), y]
-                    top_right = [round((m_rl)*(y-y_rl)+x_rl), y]
+                    top_left = (round((m_ll)*(y-y_ll)+x_ll), y)
+                    top_right = (round((m_rl)*(y-y_rl)+x_rl), y)
 
                     y=frame.shape[0]
-                    bottom_left = [round((1/m_ll)*(y-y_ll)+x_ll), y]
-                    bottom_right = [round((1/m_rl)*(y-y_rl)+x_rl), y]
+                    bottom_left = (round((1/m_ll)*(y-y_ll)+x_ll), y)
+                    bottom_right = (round((1/m_rl)*(y-y_rl)+x_rl), y)
                     # print(tuple(top_left), top_right, bottom_left, bottom_right)
 
                     # Points chosen for Homography:
@@ -345,10 +345,10 @@ class LanePredictor:
                     # cv2.circle(cdstP, tuple(top_right), 20, OLIVE, 3, cv2.LINE_AA)
                     
                     # # #Draw circle at start position of line:
-                    # cv2.circle(cdstP, tuple(bottom_left), 20, RED, 3, cv2.LINE_AA)
+                    # cv2.circle(cdstP, bottom_left, 20, RED, 3, cv2.LINE_AA)
 
                     # # #Draw circle at end position of line:
-                    # cv2.circle(cdstP, tuple(bottom_right), 20, GREEN, 3, cv2.LINE_AA)
+                    # cv2.circle(cdstP, bottom_right, 20, GREEN, 3, cv2.LINE_AA)
 
 
                     # Find vanishing point:
@@ -357,6 +357,11 @@ class LanePredictor:
 
                     x_intersection = round(x_intersection)
                     y_intersection = round(y_intersection)
+
+                    cv2.line(cdstP, bottom_right, (x_intersection,y_intersection), color, 3, cv2.LINE_AA)
+                    color = GREEN if color==RED else RED
+                    cv2.line(cdstP, bottom_left, (x_intersection,y_intersection), color, 3, cv2.LINE_AA)
+
 
                     cv2.circle(cdstP, (x_intersection, y_intersection), 20, ORCHID, 10, cv2.LINE_AA)
                     # print(x_intersection,y_intersection)
@@ -399,5 +404,7 @@ class LanePredictor:
         """
         Detects Curvatures of Lanes in a given frame
         """
+
+
 
         pass 
