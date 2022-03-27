@@ -332,7 +332,7 @@ class LanePredictor:
                     y=frame.shape[0]
                     bottom_left = [round((1/m_ll)*(y-y_ll)+x_ll), y]
                     bottom_right = [round((1/m_rl)*(y-y_rl)+x_rl), y]
-                    print(tuple(top_left), top_right, bottom_left, bottom_right)
+                    # print(tuple(top_left), top_right, bottom_left, bottom_right)
 
                     # Points chosen for Homography:
                     #Draw circle at start position of line:
@@ -346,6 +346,17 @@ class LanePredictor:
 
                     # #Draw circle at end position of line:
                     cv2.circle(cdstP, tuple(bottom_right), 20, GREEN, 3, cv2.LINE_AA)
+
+
+                    # Find vanishing point:
+                    x_intersection = (m_ll*x_ll - m_rl*x_rl + y_rl - y_ll)/(m_ll-m_rl) 
+                    y_intersection = m_ll*(x_intersection - x_ll) + y_ll
+
+                    x_intersection = round(x_intersection)
+                    y_intersection = round(y_intersection)
+
+                    cv2.circle(cdstP, (x_intersection, y_intersection), 20, GREEN, 10, cv2.LINE_AA)
+                    print(x_intersection,y_intersection)
 
                     src = np.array([[top_left[0], top_left[1]], [top_right[0],top_right[1]], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]]  ])
                     dst = np.array([[0,0],[0,width],[height,width], [height,0]])
