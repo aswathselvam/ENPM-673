@@ -207,6 +207,8 @@ class LanePredictor:
         """
         global fig, ax, lineL
         lanemask = self.getLaneMask(frame)
+        height = lanemask.shape[0]
+        width = lanemask.shape[1]
 
         # Get white pixel distribution along the columns of the images
         distribution = np.sum(lanemask, axis=0)
@@ -219,8 +221,30 @@ class LanePredictor:
         peaks = np.argsort(distribution)
         indx = peaks[-len(peaks)//10:]
         peaks = distribution[indx] 
-        self.histplotter.plot(self.histplotter.line2, indx, peaks)
+        # self.histplotter.plot(self.histplotter.line2, indx, peaks)
+        
+        min_mean_of_offset = float('inf')
+        mean_offset_idx=0
+        no_bins = 6
+        bins = np.linspace(0,len(distribution),no_bins)
+        bin_idx = np.digitize(indx, bins, right=False)
+        self.histplotter.plot(self.histplotter.line2, bin_idx*width/no_bins, peaks)
 
+        bin_idx_hist, bin_edges= np.histogram(bin_idx,bins)
+        bin_idx = np.argsort(bin_idx_hist)
+        highest_bin_idx = bin_idx[0]
+        for bin in bin_idx:
+            if bin != highest_bin_idx:
+                second_highest_bin_idx = bin 
+                break
+        # print(highest_bin_idx,second_highest_bin_idx)
+
+        # seperation = np.mean(indx)
+        highest_bin_val = (highest_bin_idx+1)*width/no_bins
+        second_highest_bin_val = (highest_bin_idx+1)*width/no_bins
+        self.histplotter.l2.set_xdata(second_highest_bin_val)
+
+        
         lanemask = cv2.cvtColor(lanemask, cv2.COLOR_GRAY2BGR)
         dst = cv2.Canny(lanemask, 2, 100, None, 3)
     
@@ -249,20 +273,38 @@ class LanePredictor:
 
         min_line_length = float('inf')
         short_line = None
+        short_line_bin = None
+        long_line_bin = None
         if linesP is not None:
             for i in range(0, len(linesP)):
                 l = linesP[i][0]
                 length = np.linalg.norm(l[:2]-l[2:])
+                
+                if not isinstance(long_line, type(None)) and not isinstance(long_line, type(None)):
+                    (leftline, rightline) =  (long_line, short_line) if long_line[0] > short_line[0] else (short_line, long_line)
+                    src = np.array([[leftline[2], leftline[3]], [rightline[0], rightline[1]], [rightline[2], rightline[3]], [leftline[0], leftline[1]]  ])
+                    dst = np.array([[0,0],[0,width],[height,width], [height,0]])
+                    H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
+                    warped_img = cv2.warpPerspective(frame, H)
+                    cv2.imshow("warped_img",warped_img)
 
                 if length < min_line_length:
                     short_line = l
+                    min_line_length = length
+                    short_line_bin = np.digitize(l[0], bins, right=False)
+                    self.histplotter.l2.set_xdata((short_line_bin+1)*width/no_bins)
+
 
                 if length > max_line_length:
                     long_line = l
+                    max_line_length = length
+                    long_line_bin = np.digitize(l[0], bins, right=False)
+                    self.histplotter.l1.set_xdata((long_line_bin+1)*width/no_bins)
                 
-                color = RED
-                if length>min_line_length:
-                    color = GREEN
+                color = GREEN
+                if length > min_line_length or np.digitize(l[2], bins, right=False)<long_line_bin:
+                    # if l[0] < highest_bin_val or l[2] < highest_bin_val or l[1] < highest_bin_val:
+                        color = GREEN
 
                 cv2.line(cdstP, (l[0], l[1]), (l[2], l[3]), color, 3, cv2.LINE_AA)
                 
