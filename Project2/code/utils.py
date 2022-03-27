@@ -45,3 +45,23 @@ class ImageGrid():
 
         self.gridimage=finalimage
         return self.gridimage
+
+class Plotter():
+    def __init__(self,title,x_label,y_label,x_lim,y_lim):
+        self.fig, ax = plt.subplots()
+        ax.set_title(title)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_xlim(0, x_lim)
+        ax.set_ylim(0, y_lim)
+        ax.legend()
+        lw=3
+        alpha = 0.5
+        self.line1, = ax.plot(np.arange(100), '-b', lw=lw, alpha=alpha, label='line1')
+        self.line2, = ax.plot(np.arange(100), 'oy', lw=lw, alpha=alpha, label='line2')
+        plt.ion()
+        plt.show()
+
+    def plot(self, line, x,y):
+        line.set_data(x,y)
+        self.fig.canvas.draw()

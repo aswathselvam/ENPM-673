@@ -37,7 +37,7 @@ def main():
 
     #---------Problem 1: Histogram equalization-------------#
     lanePredictor = LanePredictor()
-    # BOTH=True #
+    # BOTH=True
     # outimage = lanePredictor.histogramEqualization([images_histogramEQ[0]], BOTH=BOTH)
     # histogramWriter = cv2.VideoWriter(savepath+"histogram_and_adaptive.mp4",cv2.VideoWriter_fourcc(*'mp4v'), 5, (outimage.shape[1],outimage.shape[0]))
     # for image in images_histogramEQ:
@@ -50,19 +50,21 @@ def main():
 
     cap = cv2.VideoCapture(video_whiteline_path)
     ret, frame=cap.read()
-    videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (frame.shape[1],frame.shape[0]))  
-
+    out=lanePredictor.detectStraightLane(cv2.resize(frame, (800,512)))
+    videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (out.shape[1],out.shape[0]))  
+    count =1
     while(True):
         ret, frame = cap.read()
         if ret:
             #-----------Problem 2: Straight Lane Detection----------#
-            frame  = cv2.resize(frame, (512,512))
+            frame  = cv2.resize(frame, (800,512))
             out=lanePredictor.detectStraightLane(frame)
-            # cv2.imshow('Lanes', out)
-            if cv2.waitKey(0) & 0xFF == ord('q'):
+            cv2.imshow('Lanes', out)
+            if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
         else: 
-            break
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            # break
 
     return 
 

@@ -1,9 +1,14 @@
 from attr import NOTHING
 import cv2
 import numpy as np
-# import cupy as cp
-from utils import ImageGrid
+from utils import ImageGrid, Plotter
 from preprocess import *
+import math 
+import matplotlib.pyplot as plt
+
+RED = (0,0,255)
+GREEN = (0,255,0)
+
 class LanePredictor:
 
     def __init__(self,data=None,video=None):
@@ -13,6 +18,8 @@ class LanePredictor:
         self.ADAPTIVE_HISTOGRAM_EQUALIZATION = "Adaptive Histogram Equalization"
         self.histogram_profile=[None, None, None]
         self.USE_HISTOGRAM_MEMORY=False
+        # self.createCalibrationSliders()
+        self.histplotter = None
 
     def histogram(self, im_flat):
         # RANGE=256
@@ -107,51 +114,162 @@ class LanePredictor:
                 counter+=1
         return imagegrid.generate(scale=200)    
 
-    def detectStraightLane(self,frame):
-        """
-        Detects straight Lanes in a given frame
-        """
+    def nothing(self,x):
+        pass
+
+    def createCalibrationSliders(self):
         cv2.namedWindow('image')
-        def nothing(x):
-            pass
-        
+
         # create trackbars for color change
-        cv2.createTrackbar('L','image',0,255,nothing)
-        cv2.createTrackbar('A','image',0,255,nothing)
-        cv2.createTrackbar('B','image',0,255,nothing)
+        cv2.createTrackbar('L','image',0,255,self.nothing)
+        cv2.createTrackbar('A','image',0,255,self.nothing)
+        cv2.createTrackbar('B','image',0,255,self.nothing)
+        cv2.createTrackbar('L_High','image',0,255,self.nothing)
+        cv2.createTrackbar('A_High','image',0,255,self.nothing)
+        cv2.createTrackbar('B_High','image',0,255,self.nothing)
+        
+        self.switch = '0 : RGB \n1 : LAB'
+        cv2.createTrackbar(self.switch, 'image',0,1,self.nothing)
 
+
+    def calibrateColor(self, frame):
+        
         # create switch for ON/OFF functionality
-        switch = '0 : OFF \n1 : ON'
-        cv2.createTrackbar(switch, 'image',0,1,nothing)
-
-        lab_img=frame
+        original_frame=frame.copy()
         while True:
-            # lab_img = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-            lab_img=frame
+            s = cv2.getTrackbarPos(self.switch,'image')
+
+            if s:
+                frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2LAB)
+            else:
+                frame = original_frame
+            
             # get current positions of four trackbars
             lpos = cv2.getTrackbarPos('L','image')
             apos = cv2.getTrackbarPos('A','image')
             bpos = cv2.getTrackbarPos('B','image')
-            s = cv2.getTrackbarPos(switch,'image')
+            
+            # get trackbar positions
+            lposH = cv2.getTrackbarPos('L_High', 'image')
+            aposH = cv2.getTrackbarPos('A_High', 'image')
+            bposH = cv2.getTrackbarPos('B_High', 'image')
 
+            # Reject colors outside the range of low and high sliders.
+            lower_hsv = np.array([lpos, apos, bpos])
+            higher_hsv = np.array([lposH, aposH, bposH])
+            mask = cv2.inRange(frame, lower_hsv, higher_hsv)
+            output_img = cv2.bitwise_and(frame, frame, mask=mask)
 
-
-            L, a, b = cv2.split(lab_img)
+            # Try thresholding values
+            L, a, b = cv2.split(frame)
             ret,thresh_l = cv2.threshold(L,lpos,255,cv2.THRESH_BINARY)
             ret,thresh_a = cv2.threshold(a,apos,255,cv2.THRESH_BINARY)
             ret,thresh_b = cv2.threshold(b,bpos,255,cv2.THRESH_BINARY)
             # ret,lab_thresh_img = cv2.threshold(lab_img[:-1],200,255,cv2.THRESH_BINARY)
-            lab_img = cv2.merge([thresh_l,thresh_a,thresh_b])
+            # output_img = cv2.merge([thresh_l,thresh_a,thresh_b])
             # ret,lab_thresh_img = cv2.threshold(lab_img[:-2],20,255,cv2.THRESH_BINARY)
             # lab_img[:-2] = lab_thresh_img
             # lab_img = cv2.cvtColor(lab_img, cv2.COLOR_LAB2BGR)
             # lab_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             # lab_img = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-            cv2.imshow("image", lab_img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            if s:
+                output_img = cv2.cvtColor(output_img, cv2.COLOR_LAB2BGR)
+            cv2.imshow("image", output_img)
+            
+            break
+
+    def getLaneMask(self, frame):
+        #From calibrated values: 
+
+        #Use LAB Colorspace s=1, Use RGB colorspace s=0:
+        s = 1
+
+        if s:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+
+        lpos, apos, bpos, lposH, aposH, bposH = 215, 123, 119, 255, 130, 140
+
+        lower_hsv = np.array([lpos, apos, bpos])
+        higher_hsv = np.array([lposH, aposH, bposH])
+        mask = cv2.inRange(frame, lower_hsv, higher_hsv)
+        output_img = cv2.bitwise_and(frame, frame, mask=mask)
+
+        if s:
+            output_img = cv2.cvtColor(output_img, cv2.COLOR_LAB2BGR)
         
-        pass
+        ret,output_bw = cv2.threshold(cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
+        return output_bw
+
+
+    def detectStraightLane(self, frame):
+        """
+        Detects straight Lanes in a given frame
+        """
+        global fig, ax, lineL
+        lanemask = self.getLaneMask(frame)
+
+        # Get white pixel distribution along the columns of the images
+        distribution = np.sum(lanemask, axis=0)
+        if not self.histplotter:
+            self.histplotter = Plotter('Distribution of white pixels','columns of Image','Frequency',distribution.shape[0],np.max(distribution))
+        self.histplotter.plot(self.histplotter.line1, np.arange(len(distribution)),distribution)
+
+        #Get all the peaks:
+        distribution = distribution
+        peaks = np.argsort(distribution)
+        indx = peaks[-len(peaks)//10:]
+        peaks = distribution[indx] 
+        self.histplotter.plot(self.histplotter.line2, indx, peaks)
+
+        lanemask = cv2.cvtColor(lanemask, cv2.COLOR_GRAY2BGR)
+        dst = cv2.Canny(lanemask, 2, 100, None, 3)
+    
+        # Copy edges to the images that will display the results in BGR
+        cdst = cv2.cvtColor(dst, cv2.COLOR_GRAY2BGR)
+        cdstP = np.copy(cdst)
+             
+        lines = cv2.HoughLines(dst, 1, np.pi / 180, 150, None, 0, 0)
+        
+        if lines is not None:
+            for i in range(0, len(lines)):
+                rho = lines[i][0][0]
+                theta = lines[i][0][1]
+                a = math.cos(theta)
+                b = math.sin(theta)
+                x0 = a * rho
+                y0 = b * rho
+                pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
+                pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
+                cv2.line(cdst, pt1, pt2, (0,0,255), 3, cv2.LINE_AA)
+            
+        linesP = cv2.HoughLinesP(dst, 1, np.pi / 180, 10, None, 50, 10)
+        
+        max_line_length = -float('inf')
+        long_line = None
+
+        min_line_length = float('inf')
+        short_line = None
+        if linesP is not None:
+            for i in range(0, len(linesP)):
+                l = linesP[i][0]
+                length = np.linalg.norm(l[:2]-l[2:])
+
+                if length < min_line_length:
+                    short_line = l
+
+                if length > max_line_length:
+                    long_line = l
+                
+                color = RED
+                if length>min_line_length:
+                    color = GREEN
+
+                cv2.line(cdstP, (l[0], l[1]), (l[2], l[3]), color, 3, cv2.LINE_AA)
+                
+
+        cv2.imshow("Hough Lines", cdstP)
+
+        return cdst
 
 
     def detectCurvedLane(self,frame):
