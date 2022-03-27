@@ -1,3 +1,4 @@
+from turtle import right
 from attr import NOTHING
 import cv2
 import numpy as np
@@ -304,13 +305,49 @@ class LanePredictor:
                     self.short_line = l
                     self.min_line_length = length
                     self.short_line_bin = proposed_short_line_bin
-                    print(self.short_line_bin, self.long_line_bin)
+                    # print(self.short_line_bin, self.long_line_bin)
                     self.histplotter.l2.set_xdata((self.short_line_bin)*width/no_bins)
 
                                 
                 if not isinstance(self.long_line, type(None)) and not isinstance(self.short_line, type(None)):
                     (leftline, rightline) =  (self.long_line, self.short_line) if self.long_line_bin < self.short_line_bin else (self.short_line, self.long_line)
-                    src = np.array([[leftline[2], leftline[3]], [rightline[0], rightline[1]], [rightline[2], rightline[3]], [leftline[0], leftline[1]]  ])
+                    
+                    # Find the line intersections with the top and bottom of the image:
+                    # x is opencv image columns, y is opencv image rows. 
+                    # Line format [x1, y1, x2, y2]
+                    m_ll = (leftline[3] - leftline[1])/(leftline[2] - leftline[0])
+                    y_ll = leftline[1]
+                    x_ll = leftline[0]
+                    m_rl = (rightline[3] - rightline[1])/(rightline[2] - rightline[0])
+                    y_rl = rightline[1]
+                    x_rl = rightline[0]
+
+                    # cv2.line(cdstP, (leftline[0], leftline[1]), (leftline[2], leftline[3]), RED, 3, cv2.LINE_AA)
+                    # cv2.line(cdstP, (rightline[0], rightline[1]), (rightline[2], rightline[3]), GREEN, 3, cv2.LINE_AA)
+
+                    y=0
+                    top_left = [round((m_ll)*(y-y_ll)+x_ll), y]
+                    top_right = [round((m_rl)*(y-y_rl)+x_rl), y]
+
+                    y=frame.shape[0]
+                    bottom_left = [round((1/m_ll)*(y-y_ll)+x_ll), y]
+                    bottom_right = [round((1/m_rl)*(y-y_rl)+x_rl), y]
+                    print(tuple(top_left), top_right, bottom_left, bottom_right)
+
+                    # Points chosen for Homography:
+                    #Draw circle at start position of line:
+                    cv2.circle(cdstP, tuple(top_left), 20, YELLOW, 3, cv2.LINE_AA)
+
+                    # #Draw circle at end position of line:
+                    cv2.circle(cdstP, tuple(top_right), 20, OLIVE, 3, cv2.LINE_AA)
+                    
+                    # #Draw circle at start position of line:
+                    cv2.circle(cdstP, tuple(bottom_left), 20, YELLOW, 3, cv2.LINE_AA)
+
+                    # #Draw circle at end position of line:
+                    cv2.circle(cdstP, tuple(bottom_right), 20, OLIVE, 3, cv2.LINE_AA)
+
+                    src = np.array([[top_left[0], top_left[1]], [top_right[0],top_right[1]], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]]  ])
                     dst = np.array([[0,0],[0,width],[height,width], [height,0]])
                     H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
                     warped_img = cv2.warpPerspective(frame, H,(height,width))
