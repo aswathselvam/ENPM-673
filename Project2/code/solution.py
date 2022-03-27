@@ -47,20 +47,28 @@ def main():
     # cv2.imwrite(savepath+"histogram_and_adaptive.jpg",outimage)
 
 
-
+    #-----------Problem 2: Straight Lane Detection----------#
     cap = cv2.VideoCapture(video_whiteline_path)
     ret, frame=cap.read()
     out=lanePredictor.detectStraightLane(cv2.resize(frame, (800,512)))
+
+    #Create a new instance of lanePredictor for detecting flipped image.
+    flippedLanePredictor = LanePredictor()
+    
     videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (out.shape[1],out.shape[0]))  
     count =1
+    imagegrid=ImageGrid(1,2)
     while(True):
         ret, frame = cap.read()
         if ret:
-            #-----------Problem 2: Straight Lane Detection----------#
             frame  = cv2.resize(frame, (800,512))
-            frame = cv2.flip(frame, 1)
+            
             out=lanePredictor.detectStraightLane(frame)
-            # cv2.imshow('Lanes', out)
+            outflipped=flippedLanePredictor.detectStraightLane(cv2.flip(frame, 1))
+            imagegrid.set(0,0,out,"Original image")
+            imagegrid.set(0,1,outflipped,"Vertically flipped")
+            grid_img = imagegrid.generate(scale=400)
+            cv2.imshow('grid_img',  grid_img)
             if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
         else: 

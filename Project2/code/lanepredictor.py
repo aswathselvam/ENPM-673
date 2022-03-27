@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 
 RED = (0,0,255)
 GREEN = (0,255,0)
-
+YELLOW = (0,255,255)
+OLIVE = (0,128,128)
 class LanePredictor:
 
     def __init__(self,data=None,video=None):
@@ -285,10 +286,10 @@ class LanePredictor:
                 length = np.linalg.norm(l[:2]-l[2:])
 
                 #Draw circle at start position of line:
-                cv2.circle(cdstP, (l[0], l[1]), 20, GREEN, 3, cv2.LINE_AA)
+                cv2.circle(cdstP, (l[0], l[1]), 5, YELLOW, 3, cv2.LINE_AA)
 
                 #Draw circle at end position of line:
-                cv2.circle(cdstP, (l[2], l[3]), 20, RED, 3, cv2.LINE_AA)
+                cv2.circle(cdstP, (l[2], l[3]), 5, OLIVE, 3, cv2.LINE_AA)
 
                 current_line_bin = round((np.digitize(l[0], bins, right=False)+np.digitize(l[2], bins, right=False))/2)
 
@@ -327,7 +328,7 @@ class LanePredictor:
 
         cv2.imshow("Hough Lines", cdstP)
 
-        return cdst
+        return cdstP
 
 
     def detectCurvedLane(self,frame):
