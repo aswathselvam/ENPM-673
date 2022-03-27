@@ -27,7 +27,10 @@ class ImageGrid():
         for row in range(self.rows):
             colimages=[]
             for col in range(self.columns):
-                image=self.images[(row,col)]
+                image=self.images.get((row,col))
+                if not (row,col) in self.images:
+                    image=np.zeros([100,100,3],dtype=np.uint8)
+                    self.titles[row,col] = ""
                 aspect_ratio=image.shape[1]//image.shape[0] # Height/Width
                 col_img = cv2.resize(image, (scale*aspect_ratio,scale))
                 cv2.putText(col_img,self.titles[row,col], (0,30), \
@@ -58,7 +61,7 @@ class Plotter():
         lw=3
         alpha = 0.5
         self.line1, = self.ax.plot(np.arange(100), '-b', lw=lw, alpha=alpha, label='line1')
-        self.line2, = self.ax.plot(np.arange(100), 'oy', lw=lw, alpha=alpha, label='line2')
+        self.line2, = self.ax.plot(np.arange(100), '^',c=(0.5,0.7,0.1), markersize = 10, lw=2, alpha=alpha, label='line2')
         self.l1 = self.ax.axvline(0,linewidth=4, color='r')
         self.l2 = self.ax.axvline(0,linewidth=4, color='g')
         plt.ion()

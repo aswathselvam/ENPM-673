@@ -11,6 +11,7 @@ RED = (0,0,255)
 GREEN = (0,255,0)
 YELLOW = (0,255,255)
 OLIVE = (0,128,128)
+ORCHID = (204,50,153)
 class LanePredictor:
 
     def __init__(self,data=None,video=None):
@@ -213,12 +214,14 @@ class LanePredictor:
         self.short_line = None
         self.short_line_bin = None
         self.long_line_bin = None
+        self.H=None
 
     def detectStraightLane(self, frame):
         """
         Detects straight Lanes in a given frame
         """
         global fig, ax, lineL
+
         lanemask = self.getLaneMask(frame)
         height = lanemask.shape[0]
         width = lanemask.shape[1]
@@ -336,16 +339,16 @@ class LanePredictor:
 
                     # Points chosen for Homography:
                     #Draw circle at start position of line:
-                    cv2.circle(cdstP, tuple(top_left), 20, YELLOW, 3, cv2.LINE_AA)
+                    # cv2.circle(cdstP, tuple(top_left), 20, YELLOW, 3, cv2.LINE_AA)
 
-                    # #Draw circle at end position of line:
-                    cv2.circle(cdstP, tuple(top_right), 20, OLIVE, 3, cv2.LINE_AA)
+                    # # #Draw circle at end position of line:
+                    # cv2.circle(cdstP, tuple(top_right), 20, OLIVE, 3, cv2.LINE_AA)
                     
-                    # #Draw circle at start position of line:
-                    cv2.circle(cdstP, tuple(bottom_left), 20, RED, 3, cv2.LINE_AA)
+                    # # #Draw circle at start position of line:
+                    # cv2.circle(cdstP, tuple(bottom_left), 20, RED, 3, cv2.LINE_AA)
 
-                    # #Draw circle at end position of line:
-                    cv2.circle(cdstP, tuple(bottom_right), 20, GREEN, 3, cv2.LINE_AA)
+                    # # #Draw circle at end position of line:
+                    # cv2.circle(cdstP, tuple(bottom_right), 20, GREEN, 3, cv2.LINE_AA)
 
 
                     # Find vanishing point:
@@ -355,14 +358,19 @@ class LanePredictor:
                     x_intersection = round(x_intersection)
                     y_intersection = round(y_intersection)
 
-                    cv2.circle(cdstP, (x_intersection, y_intersection), 20, GREEN, 10, cv2.LINE_AA)
-                    print(x_intersection,y_intersection)
+                    cv2.circle(cdstP, (x_intersection, y_intersection), 20, ORCHID, 10, cv2.LINE_AA)
+                    # print(x_intersection,y_intersection)
 
-                    src = np.array([[top_left[0], top_left[1]], [top_right[0],top_right[1]], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]]  ])
-                    dst = np.array([[0,0],[0,width],[height,width], [height,0]])
-                    H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
-                    warped_img = cv2.warpPerspective(frame, H,(height,width))
-                    cv2.imshow("warped_img",warped_img)
+                    src = np.array([[x_intersection-20,y_intersection], [x_intersection+20, y_intersection], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]] ], dtype=np.float32)
+                    # src = np.array([[355,310], [442, 310], [750, 510], [70, 510] ], dtype=np.float32)
+                    # src = np.roll(src, 1)
+                    tw = height
+                    th = width
+                    dst = np.array([[0,0],[tw,0],[tw,th],[0,th]],dtype=np.float32)
+
+                    self.H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
+                    # warped_img = cv2.warpPerspective(frame, self.H,(height,width))
+                    # cv2.imshow("warped_img",warped_img)
 
 
                 color = RED
@@ -374,9 +382,17 @@ class LanePredictor:
                 cv2.line(cdstP, (l[0], l[1]), (l[2], l[3]), color, 3, cv2.LINE_AA)
                 
 
-        cv2.imshow("Hough Lines", cdstP)
+        # cv2.imshow("Hough Lines", cdstP)
 
-        return cdstP
+        # convert canvas to image
+        img = np.fromstring(self.histplotter.fig.canvas.tostring_rgb(), dtype=np.uint8,
+                sep='')
+        img  = img.reshape(self.histplotter.fig.canvas.get_width_height()[::-1] + (3,))
+
+        # img is rgb, convert to opencv's default bgr
+        img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
+
+        return cdstP, img
 
 
     def detectCurvedLane(self,frame):

@@ -54,26 +54,34 @@ def main():
 
     #Create a new instance of lanePredictor for detecting flipped image.
     flippedLanePredictor = LanePredictor()
-    
-    videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'DIVX'), 30, (out.shape[1],out.shape[0]))  
-    count =1
-    imagegrid=ImageGrid(1,2)
+    videoWriter=None
+
+    imagegrid=ImageGrid(2,3)
     while(True):
         ret, frame = cap.read()
         if ret:
             frame  = cv2.resize(frame, (800,512))
-            
-            out=lanePredictor.detectStraightLane(frame)
-            outflipped=flippedLanePredictor.detectStraightLane(cv2.flip(frame, 1))
-            imagegrid.set(0,0,out,"Original image")
-            imagegrid.set(0,1,outflipped,"Vertically flipped")
+            out,hist=lanePredictor.detectStraightLane(frame)
+            outflipped,histflipped=flippedLanePredictor.detectStraightLane(cv2.flip(frame, 1))
+            imagegrid.set(0,0,frame,"Input image")
+            imagegrid.set(0,1,out,"Lane-Type detection")
+            imagegrid.set(1,1,hist,"")
+            imagegrid.set(0,2,outflipped,"Vertically flipped")
+            imagegrid.set(1,2,histflipped,"")
+            # imagegrid.set(1,2,imgf,"Lane-Type histogram")
+
             grid_img = imagegrid.generate(scale=400)
+            if isinstance(videoWriter, type(None)):
+                videoWriter = cv2.VideoWriter(savepath+'whiteline.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 15, (grid_img.shape[1],grid_img.shape[0]))  
+            videoWriter.write(grid_img)
+
             cv2.imshow('grid_img',  grid_img)
-            if cv2.waitKey(100) & 0xFF == ord('q'):
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else: 
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            # break
+            videoWriter.release()
+            break
 
     return 
 
