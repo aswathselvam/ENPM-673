@@ -60,7 +60,7 @@ def main():
             frame  = cv2.resize(frame, (800,512))
             frame = cv2.flip(frame, 1)
             out=lanePredictor.detectStraightLane(frame)
-            cv2.imshow('Lanes', out)
+            # cv2.imshow('Lanes', out)
             if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
         else: 

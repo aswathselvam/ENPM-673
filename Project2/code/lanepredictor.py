@@ -20,6 +20,8 @@ class LanePredictor:
         self.USE_HISTOGRAM_MEMORY=False
         # self.createCalibrationSliders()
         self.histplotter = None
+        self.setupLinevariabless()
+
 
     def histogram(self, im_flat):
         # RANGE=256
@@ -201,6 +203,15 @@ class LanePredictor:
         return output_bw
 
 
+    def setupLinevariabless(self):
+        self.max_line_length = -float('inf')
+        self.long_line = None
+
+        self.min_line_length = float('inf')
+        self.short_line = None
+        self.short_line_bin = None
+        self.long_line_bin = None
+
     def detectStraightLane(self, frame):
         """
         Detects straight Lanes in a given frame
@@ -242,7 +253,7 @@ class LanePredictor:
         # seperation = np.mean(indx)
         highest_bin_val = (highest_bin_idx+1)*width/no_bins
         second_highest_bin_val = (highest_bin_idx+1)*width/no_bins
-        self.histplotter.l2.set_xdata(second_highest_bin_val)
+        # self.histplotter.l2.set_xdata(second_highest_bin_val)
 
         
         lanemask = cv2.cvtColor(lanemask, cv2.COLOR_GRAY2BGR)
@@ -266,43 +277,48 @@ class LanePredictor:
                 pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
                 cv2.line(cdst, pt1, pt2, (0,0,255), 3, cv2.LINE_AA)
             
-        linesP = cv2.HoughLinesP(dst, 1, np.pi / 180, 10, None, 50, 10)
+        linesP = cv2.HoughLinesP(dst, 1, np.pi / 180, 100, None, 50, 10)
         
-        max_line_length = -float('inf')
-        long_line = None
-
-        min_line_length = float('inf')
-        short_line = None
-        short_line_bin = None
-        long_line_bin = None
         if linesP is not None:
             for i in range(0, len(linesP)):
                 l = linesP[i][0]
                 length = np.linalg.norm(l[:2]-l[2:])
+
+                #Draw circle at start position of line:
+                cv2.circle(cdstP, (l[0], l[1]), 20, GREEN, 3, cv2.LINE_AA)
+
+                #Draw circle at end position of line:
+                cv2.circle(cdstP, (l[2], l[3]), 20, RED, 3, cv2.LINE_AA)
+
+                current_line_bin = round((np.digitize(l[0], bins, right=False)+np.digitize(l[2], bins, right=False))/2)
+
+                if length > self.max_line_length:
+                    self.long_line = l
+                    self.max_line_length = length
+                    self.long_line_bin = current_line_bin
+                    self.histplotter.l1.set_xdata((self.long_line_bin)*width/no_bins)
                 
-                if not isinstance(long_line, type(None)) and not isinstance(long_line, type(None)):
-                    (leftline, rightline) =  (long_line, short_line) if long_line[0] > short_line[0] else (short_line, long_line)
+                proposed_short_line_bin = current_line_bin
+                if proposed_short_line_bin != self.long_line_bin:
+                    self.short_line = l
+                    self.min_line_length = length
+                    self.short_line_bin = proposed_short_line_bin
+                    print(self.short_line_bin, self.long_line_bin)
+                    self.histplotter.l2.set_xdata((self.short_line_bin)*width/no_bins)
+
+                                
+                if not isinstance(self.long_line, type(None)) and not isinstance(self.short_line, type(None)):
+                    (leftline, rightline) =  (self.long_line, self.short_line) if self.long_line_bin < self.short_line_bin else (self.short_line, self.long_line)
                     src = np.array([[leftline[2], leftline[3]], [rightline[0], rightline[1]], [rightline[2], rightline[3]], [leftline[0], leftline[1]]  ])
                     dst = np.array([[0,0],[0,width],[height,width], [height,0]])
                     H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
-                    warped_img = cv2.warpPerspective(frame, H)
+                    warped_img = cv2.warpPerspective(frame, H,(height,width))
                     cv2.imshow("warped_img",warped_img)
 
-                if length < min_line_length:
-                    short_line = l
-                    min_line_length = length
-                    short_line_bin = np.digitize(l[0], bins, right=False)
-                    self.histplotter.l2.set_xdata((short_line_bin+1)*width/no_bins)
 
-
-                if length > max_line_length:
-                    long_line = l
-                    max_line_length = length
-                    long_line_bin = np.digitize(l[0], bins, right=False)
-                    self.histplotter.l1.set_xdata((long_line_bin+1)*width/no_bins)
-                
-                color = GREEN
-                if length > min_line_length or np.digitize(l[2], bins, right=False)<long_line_bin:
+                color = RED
+                # print(l,highest_bin_val,(long_line_bin+1)*width/no_bins)
+                if current_line_bin==self.short_line_bin:
                     # if l[0] < highest_bin_val or l[2] < highest_bin_val or l[1] < highest_bin_val:
                         color = GREEN
 
