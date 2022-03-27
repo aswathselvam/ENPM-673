@@ -405,6 +405,7 @@ class LanePredictor:
         Detects Curvatures of Lanes in a given frame
         """
 
+        
 
 
         pass 
