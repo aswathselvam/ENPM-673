@@ -2,6 +2,7 @@ from turtle import right
 from attr import NOTHING
 import cv2
 import numpy as np
+from sympy import continued_fraction
 from utils import ImageGrid, Plotter
 from preprocess import *
 import math 
@@ -23,6 +24,7 @@ class LanePredictor:
         self.USE_HISTOGRAM_MEMORY=False
         # self.createCalibrationSliders()
         self.histplotter = None
+        self.lineposPlotter = None
         self.setupLinevariabless()
 
 
@@ -449,34 +451,149 @@ class LanePredictor:
         """
 
         lanemask = self.getCurvedLaneMask(frame)
-        size = np.size(lanemask)
-        skel = np.zeros(lanemask.shape,np.uint8)
-        ret,img = cv2.threshold(lanemask,5,255,0)
-        # img = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-        # img = cv2.Canny(img, 2, 100, None, 7)
-        element = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-        done = False
+        element = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5))
+        lanemask = cv2.dilate(lanemask,element,iterations=1)
+
+        (contours,h) = cv2.findContours(lanemask,0, cv2.CHAIN_APPROX_NONE)
+        lanemask = cv2.cvtColor(lanemask,cv2.COLOR_GRAY2BGR)
+
+        for cnt in contours:
+            approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
+            if len(approx)==4:
+                cv2.drawContours(lanemask,[cnt],0,(0,255,0),2)
+
+        return lanemask
+        height = lanemask.shape[0]
+        width = lanemask.shape[1]
+
+        distribution = np.sum(lanemask, axis=0)
+        if not self.lineposPlotter:
+            self.lineposPlotter = Plotter('Distribution of white pixels','columns of Image','Frequency',width,width)
+        self.lineposPlotter.plot(self.lineposPlotter.line1, np.arange(len(distribution)),distribution)
 
 
+        #Create default parametrization LSD
+        lsd = cv2.createLineSegmentDetector(0)
 
-        while( not done):
-            eroded = cv2.erode(img,element)
-            temp = cv2.dilate(eroded,element)
-            temp = cv2.subtract(img,temp)
-            skel = cv2.bitwise_or(skel,temp)
-            img = eroded.copy()
+        #Detect lines in the image
+        linesP = lsd.detect(lanemask)[0] #Position 0 of the returned tuple are the detected lines
 
-            zeros = size - cv2.countNonZero(img)
-            if zeros==size:
-                done = True
-        
-        pnts = cv2.findNonZero(skel) #[1:-1,1:-1]
-        pnts = np.squeeze(pnts)
-        ext = self.get_end_pnts(pnts, skel)
-        for p in ext:
-            cv2.circle(skel, (p[0], p[1]), 5, 128)
+        #Draw detected lines in the image
+        lsd_img = lsd.drawSegments(lanemask,linesP)
 
-        cv2.imshow("lanemask",skel)
+        cdstP = cv2.cvtColor(lanemask,cv2.COLOR_GRAY2BGR)
+
+        no_bins = 6
+        bins = np.linspace(0,width,no_bins)
+
+        if linesP is not None:
+            for i in range(0, len(linesP)):
+                l = np.array(linesP[i][0],dtype=np.float32)
+                length = np.linalg.norm(l[:2]-l[2:])
+
+                current_line_bin = round((np.digitize(l[0], bins, right=False)+np.digitize(l[2], bins, right=False))/2)
+
+                if length > self.max_line_length:
+                    self.long_line = l
+                    self.max_line_length = length
+                    self.long_line_bin = current_line_bin
+                    self.lineposPlotter.l1.set_xdata((self.long_line_bin)*width/no_bins)
+                
+                proposed_short_line_bin = current_line_bin
+                if proposed_short_line_bin != self.long_line_bin:
+                    self.short_line = l
+                    self.min_line_length = length
+                    self.short_line_bin = proposed_short_line_bin
+                    # print(self.short_line_bin, self.long_line_bin)
+                    self.lineposPlotter.l2.set_xdata((self.short_line_bin)*width/no_bins)
+
+                                
+                if not isinstance(self.long_line, type(None)) and not isinstance(self.short_line, type(None)):
+                    (leftline, rightline, color) =  (self.long_line, self.short_line, GREEN) if self.long_line_bin < self.short_line_bin else (self.short_line, self.long_line, RED)
+                    
+                    # Find the line intersections with the top and bottom of the image:
+                    # x is opencv image columns, y is opencv image rows. 
+                    # Line format [x1, y1, x2, y2]
+                    m_ll = (leftline[3] - leftline[1])/(leftline[2] - leftline[0])
+                    y_ll = leftline[1]
+                    x_ll = leftline[0]
+                    m_rl = (rightline[3] - rightline[1])/(rightline[2] - rightline[0])
+                    y_rl = rightline[1]
+                    x_rl = rightline[0]
+
+                    # cv2.line(cdstP, (leftline[0], leftline[1]), (leftline[2], leftline[3]), RED, 3, cv2.LINE_AA)
+                    # cv2.line(cdstP, (rightline[0], rightline[1]), (rightline[2], rightline[3]), GREEN, 3, cv2.LINE_AA)
+
+                    try:
+                        y=0
+                        top_left = (round((m_ll)*(y-y_ll)+x_ll), y)
+                        top_right = (round((m_rl)*(y-y_rl)+x_rl), y)
+
+                        y=frame.shape[0]
+                        bottom_left = (round((1/m_ll)*(y-y_ll)+x_ll), y)
+                        bottom_right = (round((1/m_rl)*(y-y_rl)+x_rl), y)
+                        # print(tuple(top_left), top_right, bottom_left, bottom_right)
+                    except Exception:
+                        continue
+
+                    # Points chosen for Homography:
+                    #Draw circle at start position of line:
+                    # cv2.circle(cdstP, tuple(top_left), 20, YELLOW, 3, cv2.LINE_AA)
+
+                    # # #Draw circle at end position of line:
+                    # cv2.circle(cdstP, tuple(top_right), 20, OLIVE, 3, cv2.LINE_AA)
+                    
+                    # # #Draw circle at start position of line:
+                    # cv2.circle(cdstP, bottom_left, 20, RED, 3, cv2.LINE_AA)
+
+                    # # #Draw circle at end position of line:
+                    # cv2.circle(cdstP, bottom_right, 20, GREEN, 3, cv2.LINE_AA)
+
+
+                    # Find vanishing point:
+                    x_intersection = (m_ll*x_ll - m_rl*x_rl + y_rl - y_ll)/(m_ll-m_rl) 
+                    y_intersection = m_ll*(x_intersection - x_ll) + y_ll
+
+                    x_intersection = round(x_intersection)
+                    y_intersection = round(y_intersection)
+
+
+                    l = np.asarray(l,dtype=np.int)
+                    #Draw circle at start position of line:
+                    cv2.circle(cdstP, (l[0], l[1]), 5, YELLOW, 3, cv2.LINE_AA)
+
+                    #Draw circle at end position of line:
+                    cv2.circle(cdstP, (l[2], l[3]), 5, OLIVE, 3, cv2.LINE_AA)
+
+                    cv2.line(cdstP, bottom_right, (x_intersection,y_intersection), color, 3, cv2.LINE_AA)
+                    color = GREEN if color==RED else RED
+                    cv2.line(cdstP, bottom_left, (x_intersection,y_intersection), color, 3, cv2.LINE_AA)
+
+
+                    cv2.circle(cdstP, (x_intersection, y_intersection), 20, ORCHID, 10, cv2.LINE_AA)
+                    # print(x_intersection,y_intersection)
+
+                    src = np.array([[x_intersection-20,y_intersection], [x_intersection+20, y_intersection], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]] ], dtype=np.float32)
+                    # src = np.array([[355,310], [442, 310], [750, 510], [70, 510] ], dtype=np.float32)
+                    # src = np.roll(src, 1)
+                    tw = height
+                    th = width
+                    dst = np.array([[0,0],[tw,0],[tw,th],[0,th]],dtype=np.float32)
+
+                    self.H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
+                    # warped_img = cv2.warpPerspective(frame, self.H,(height,width))
+                    # cv2.imshow("warped_img",warped_img)
+
+
+                color = RED
+                # print(l,highest_bin_val,(long_line_bin+1)*width/no_bins)
+                if current_line_bin==self.short_line_bin:
+                    # if l[0] < highest_bin_val or l[2] < highest_bin_val or l[1] < highest_bin_val:
+                        color = GREEN
+
+                # cv2.line(cdstP, (l[0], l[1]), (l[2], l[3]), color, 3, cv2.LINE_AA)
+
+        cv2.imshow("lanemask",cdstP)
 
 
         return frame 
