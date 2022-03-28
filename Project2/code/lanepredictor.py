@@ -8,6 +8,10 @@ from preprocess import *
 import math 
 import matplotlib.pyplot as plt
 
+from sympy import Matrix
+from sympy import *
+
+
 RED = (0,0,255)
 GREEN = (0,255,0)
 YELLOW = (0,255,255)
@@ -22,9 +26,9 @@ class LanePredictor:
         self.ADAPTIVE_HISTOGRAM_EQUALIZATION = "Adaptive Histogram Equalization"
         self.histogram_profile=[None, None, None]
         self.USE_HISTOGRAM_MEMORY=False
-        # self.createCalibrationSliders()
         self.histplotter = None
         self.lineposPlotter = None
+        self.colorCalibrationInitialized = False
         self.setupLinevariabless()
 
 
@@ -138,40 +142,45 @@ class LanePredictor:
         self.switch = '0 : RGB \n1 : LAB'
         cv2.createTrackbar(self.switch, 'image',0,1,self.nothing)
 
+        self.colorCalibrationInitialized = True
+
 
     def calibrateColor(self, frame):
         
+        if not self.colorCalibrationInitialized:
+            self.createCalibrationSliders()
+
         # create switch for ON/OFF functionality
         original_frame=frame.copy()
         while True:
-            s = cv2.getTrackbarPos(self.switch,'image')
+            switch = cv2.getTrackbarPos(self.switch,'image')
 
-            if s:
+            if switch:
                 frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2LAB)
             else:
                 frame = original_frame
             
             # get current positions of four trackbars
-            lpos = cv2.getTrackbarPos('L','image')
-            apos = cv2.getTrackbarPos('A','image')
-            bpos = cv2.getTrackbarPos('B','image')
+            self.lpos = cv2.getTrackbarPos('L','image')
+            self.apos = cv2.getTrackbarPos('A','image')
+            self.bpos = cv2.getTrackbarPos('B','image')
             
             # get trackbar positions
-            lposH = cv2.getTrackbarPos('L_High', 'image')
-            aposH = cv2.getTrackbarPos('A_High', 'image')
-            bposH = cv2.getTrackbarPos('B_High', 'image')
+            self.lposH = cv2.getTrackbarPos('L_High', 'image')
+            self.aposH = cv2.getTrackbarPos('A_High', 'image')
+            self.bposH = cv2.getTrackbarPos('B_High', 'image')
 
             # Reject colors outside the range of low and high sliders.
-            lower_hsv = np.array([lpos, apos, bpos])
-            higher_hsv = np.array([lposH, aposH, bposH])
+            lower_hsv = np.array([self.lpos, self.apos, self.bpos])
+            higher_hsv = np.array([self.lposH, self.aposH, self.bposH])
             mask = cv2.inRange(frame, lower_hsv, higher_hsv)
             output_img = cv2.bitwise_and(frame, frame, mask=mask)
 
             # Try thresholding values
             L, a, b = cv2.split(frame)
-            ret,thresh_l = cv2.threshold(L,lpos,255,cv2.THRESH_BINARY)
-            ret,thresh_a = cv2.threshold(a,apos,255,cv2.THRESH_BINARY)
-            ret,thresh_b = cv2.threshold(b,bpos,255,cv2.THRESH_BINARY)
+            ret,thresh_l = cv2.threshold(L,self.lpos,255,cv2.THRESH_BINARY)
+            ret,thresh_a = cv2.threshold(a,self.apos,255,cv2.THRESH_BINARY)
+            ret,thresh_b = cv2.threshold(b,self.bpos,255,cv2.THRESH_BINARY)
             # ret,lab_thresh_img = cv2.threshold(lab_img[:-1],200,255,cv2.THRESH_BINARY)
             # output_img = cv2.merge([thresh_l,thresh_a,thresh_b])
             # ret,lab_thresh_img = cv2.threshold(lab_img[:-2],20,255,cv2.THRESH_BINARY)
@@ -179,11 +188,13 @@ class LanePredictor:
             # lab_img = cv2.cvtColor(lab_img, cv2.COLOR_LAB2BGR)
             # lab_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             # lab_img = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-            if s:
+            if switch:
                 output_img = cv2.cvtColor(output_img, cv2.COLOR_LAB2BGR)
             cv2.imshow("image", output_img)
             
             break
+
+        return output_img
 
     def getLaneMask(self, frame):
         #From calibrated values: 
@@ -207,26 +218,29 @@ class LanePredictor:
         ret,output_bw = cv2.threshold(cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
         return output_bw
 
-    def getCurvedLaneMask(self,frame):
+    def getCurvedLaneMask(self,frame,lower_val=224):
         #From calibrated values: 
 
-        #Use LAB Colorspace s=1, Use RGB colorspace s=0:
-        s = 0
+        if not self.colorCalibrationInitialized:
+            self.lpos, self.apos, self.bpos, self.lposH, self.aposH, self.bposH = 0, 0, lower_val, 255, 255, 255
+            
+            #Use LAB Colorspace s=1, Use RGB colorspace s=0:
+            self.switch = 0            
+            
 
-        if s:
+        if self.switch:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
 
-        lpos, apos, bpos, lposH, aposH, bposH = 0, 0, 224, 255, 255, 255
-
-        lower_hsv = np.array([lpos, apos, bpos])
-        higher_hsv = np.array([lposH, aposH, bposH])
+        lower_hsv = np.array([self.lpos, self.apos, self.bpos])
+        higher_hsv = np.array([self.lposH, self.aposH, self.bposH])
         mask = cv2.inRange(frame, lower_hsv, higher_hsv)
         output_img = cv2.bitwise_and(frame, frame, mask=mask)
-
-        if s:
+        if self.switch:
             output_img = cv2.cvtColor(output_img, cv2.COLOR_LAB2BGR)
-        
-        ret,output_bw = cv2.threshold(cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
+
+        output_bw = cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY)#cv2.threshold(, lower_val, 255, cv2.THRESH_BINARY)
+        # cv2.imshow("image", output_bw)
+        # cv2.waitKey(0)
         return output_bw
 
 
@@ -389,7 +403,8 @@ class LanePredictor:
                     cv2.circle(cdstP, (x_intersection, y_intersection), 20, ORCHID, 10, cv2.LINE_AA)
                     # print(x_intersection,y_intersection)
 
-                    src = np.array([[x_intersection-20,y_intersection], [x_intersection+20, y_intersection], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]] ], dtype=np.float32)
+                    offset = 20
+                    src = np.array([[x_intersection-offset,y_intersection], [x_intersection+offset, y_intersection], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]] ], dtype=np.float32)
                     # src = np.array([[355,310], [442, 310], [750, 510], [70, 510] ], dtype=np.float32)
                     # src = np.roll(src, 1)
                     tw = height
@@ -450,19 +465,37 @@ class LanePredictor:
         Detects Curvatures of Lanes in a given frame
         """
 
+        if not isinstance(self.H, type(None)):
+            self.detectwithTopDownView(frame)
+            return frame
+
         lanemask = self.getCurvedLaneMask(frame)
-        element = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5))
+        element = cv2.getStructuringElement(cv2.MORPH_RECT,(2,2))
         lanemask = cv2.dilate(lanemask,element,iterations=1)
 
         (contours,h) = cv2.findContours(lanemask,0, cv2.CHAIN_APPROX_NONE)
-        lanemask = cv2.cvtColor(lanemask,cv2.COLOR_GRAY2BGR)
+        lanemask_color = cv2.cvtColor(lanemask,cv2.COLOR_GRAY2BGR)
+
+        out_mask = np.zeros_like(lanemask)
 
         for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < 50 or area > 1700:
+                continue
             approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
-            if len(approx)==4:
-                cv2.drawContours(lanemask,[cnt],0,(0,255,0),2)
+            # if len(approx)!=4:
+            #     continue
+            cv2.drawContours(lanemask_color,[cnt],0,(0,255,0),2)
+            cv2.drawContours(out_mask,[cnt], -1, 255, cv2.FILLED, 1)
 
-        return lanemask
+        out=lanemask.copy()
+        out[out_mask == 0] = 0
+        lanemask = out
+
+        cv2.imshow("out",out)
+        cv2.waitKey(0)
+        # return frame
+
         height = lanemask.shape[0]
         width = lanemask.shape[1]
 
@@ -490,6 +523,9 @@ class LanePredictor:
             for i in range(0, len(linesP)):
                 l = np.array(linesP[i][0],dtype=np.float32)
                 length = np.linalg.norm(l[:2]-l[2:])
+
+                if length < 20:
+                    continue
 
                 current_line_bin = round((np.digitize(l[0], bins, right=False)+np.digitize(l[2], bins, right=False))/2)
 
@@ -544,10 +580,10 @@ class LanePredictor:
                     # cv2.circle(cdstP, tuple(top_right), 20, OLIVE, 3, cv2.LINE_AA)
                     
                     # # #Draw circle at start position of line:
-                    # cv2.circle(cdstP, bottom_left, 20, RED, 3, cv2.LINE_AA)
+                    cv2.circle(cdstP, bottom_left, 20, RED, 3, cv2.LINE_AA)
 
                     # # #Draw circle at end position of line:
-                    # cv2.circle(cdstP, bottom_right, 20, GREEN, 3, cv2.LINE_AA)
+                    cv2.circle(cdstP, bottom_right, 20, GREEN, 3, cv2.LINE_AA)
 
 
                     # Find vanishing point:
@@ -573,13 +609,15 @@ class LanePredictor:
                     cv2.circle(cdstP, (x_intersection, y_intersection), 20, ORCHID, 10, cv2.LINE_AA)
                     # print(x_intersection,y_intersection)
 
-                    src = np.array([[x_intersection-20,y_intersection], [x_intersection+20, y_intersection], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]] ], dtype=np.float32)
+                    offset = 30
+                    src = np.array([[x_intersection-offset,y_intersection], [x_intersection+offset, y_intersection], [bottom_right[0], bottom_right[1]], [bottom_left[0], bottom_left[1]] ], dtype=np.float32)
+                    # src[:,[0,1]] = src[:,[1,0]]
                     # src = np.array([[355,310], [442, 310], [750, 510], [70, 510] ], dtype=np.float32)
                     # src = np.roll(src, 1)
                     tw = height
                     th = width
                     dst = np.array([[0,0],[tw,0],[tw,th],[0,th]],dtype=np.float32)
-
+                    
                     self.H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
                     # warped_img = cv2.warpPerspective(frame, self.H,(height,width))
                     # cv2.imshow("warped_img",warped_img)
@@ -593,7 +631,150 @@ class LanePredictor:
 
                 # cv2.line(cdstP, (l[0], l[1]), (l[2], l[3]), color, 3, cv2.LINE_AA)
 
-        cv2.imshow("lanemask",cdstP)
+        # cv2.imshow("lanemask",cdstP)
 
 
         return frame 
+
+
+    def detectwithTopDownView(self, frame):
+
+        # self.calibrateColor(frame)
+        original_frame = frame.copy()
+        height = frame.shape[0]
+        width = frame.shape[1]
+
+        frame = self.getCurvedLaneMask(frame,220)
+        lanemask = cv2.warpPerspective(frame, self.H,(height,width))
+        frame = lanemask
+
+
+        element = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+
+        done = False
+        skel = np.zeros(frame.shape,np.uint8)
+        size = np.size(frame)
+        while( not done):
+            eroded = cv2.erode(frame,element)
+            temp = cv2.dilate(eroded,element)
+            temp = cv2.subtract(frame,temp)
+            skel = cv2.bitwise_or(skel,temp)
+            frame = eroded.copy()
+
+            zeros = size - cv2.countNonZero(frame)
+            if zeros==size:
+                done = True
+
+
+        # element = cv2.getStructuringElement(cv2.MORPH_RECT,(2,2))
+
+        # (contours,h) = cv2.findContours(lanemask,0, cv2.CHAIN_APPROX_NONE)
+        # lanemask_color = cv2.cvtColor(lanemask,cv2.COLOR_GRAY2BGR)
+
+        # out_mask = np.zeros_like(lanemask)
+
+        # for cnt in contours:
+        #     area = cv2.contourArea(cnt)
+        #     cntpts = np.squeeze(cnt)
+        #     if len(cntpts)<3:
+        #         continue
+        #     minx = min(cntpts[:,0])
+        #     maxx = max(cntpts[:,0])
+        #     miny = min(cntpts[:,1])
+        #     maxy = max(cntpts[:,1])
+        #     sqarea = (abs(minx-maxx)*abs(miny-maxy))
+        #     # print(area, sqarea)
+        #     if area/sqarea>math.pi/5:
+        #         continue
+        #     # approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
+        #     # if len(approx)!=4:
+        #     #     continue
+        #     cv2.drawContours(lanemask_color,[cnt],0,(0,255,0),2)
+        #     cv2.drawContours(out_mask,[cnt], -1, 255, cv2.FILLED, 1)
+
+        # # out=lanemask.copy()
+        # # out[out_mask == 0] = 0 
+        
+        # Get indices of x and y from left and right lanes
+        
+        def lsqr(lx,ly):
+            a,b,c = symbols('a b c')
+            sqx = [i**2 for i in lx]
+            X = Matrix([[a],[b],[c]])
+            A = np.zeros(shape=(len(lx),3))
+            B = Matrix(ly)
+            for i in range(1,len(lx)):
+                A[i][0] = sqx[i]
+                A[i][1] = lx[i]
+                A[i][2] = 1 
+            A = Matrix(A)
+            # print (A)
+            temp = transpose(A)*A
+            inA = temp.inv()
+            X = (inA)*transpose(A)*B
+            return (X)
+
+        # Left side:
+        left_half = skel[:,:skel.shape[1]//2]
+        right_half = skel[:,skel.shape[1]//2:]
+        left_half_coords = np.squeeze(np.dstack(np.where(left_half>60)))
+        left_half_coords = left_half_coords[left_half_coords[:, 1].argsort()]
+        right_half_coords = np.squeeze(np.dstack(np.where(right_half>10)))
+        right_half_coords = right_half_coords[right_half_coords[:, 1].argsort()]
+       
+        Xl = lsqr(left_half_coords[:,1], left_half_coords[:,0])
+        Xr = lsqr(left_half.shape[1]+right_half_coords[:,1], right_half_coords[:,0])
+        exl = np.linspace(0, left_half.shape[1], 100)
+        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, 100)
+        eyl = Xl[0]*exl**2 + Xl[1]*exl + Xl[2]        
+        eyr = Xr[0]*exr**2 + Xr[1]*exr + Xr[2]        
+        
+        eyl=np.array(eyl,dtype=int)
+        eyr=np.array(eyr,dtype=int)
+        exl = np.concatenate((exr,exl))
+        eyl = np.concatenate((eyr,eyl))
+
+        skel_color = cv2.cvtColor(skel,cv2.COLOR_GRAY2BGR)
+        for x,y in zip(exl,eyl):
+            cv2.circle(skel_color, (int(x),int(y)), 5, OLIVE, 3, cv2.LINE_AA)
+        cv2.imshow("skel_color",skel_color)
+
+
+        H_inv = np.linalg.inv(self.H)
+
+        plane_pts=[]
+        for x,y in zip(exl,eyl):
+            [x,y,w]= H_inv@np.array([x,y,1])
+            x=x/w
+            y=y/w
+            plane_pts.append([x,y])
+            cv2.circle(original_frame, (int(x),int(y)), 5, OLIVE, 3, cv2.LINE_AA)
+
+        plane_pts= np.array([plane_pts],dtype=np.int32)
+        mask = np.zeros_like(original_frame)
+
+        imColorLane = cv2.fillPoly(mask, plane_pts, (80,227, 227))
+        imColorLane = cv2.addWeighted(original_frame,1,imColorLane,0.5,0)
+
+        # cv2.fillConvexPoly(mask, plane_pts, 1)
+        # mask = mask.astype(np.bool)
+
+        # out_frame = np.zeros_like(original_frame)
+        # out_frame[mask] = original_frame[mask]
+        cv2.imshow("original_frame",imColorLane)
+
+
+        # idx, delta = 10,10
+        # dy = left_half_coords[idx+delta] - left_half_coords[idx]
+        # dx = left_half_coords[idx+delta] - left_half_coords[idx]
+
+        # # Sample point distance sp
+        # sp = 10
+        # dy_ = left_half_coords[idx+delta+sp] - left_half_coords[idx+sp]
+        # dy2 = dy_ - dy
+        # Rleft= ((1+(dy/dx)**2)**1.5)/(dy2/dx)
+
+        # print(left_half_coords)
+        # input()
+        # Find ROC with those points
+
