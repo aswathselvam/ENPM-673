@@ -205,6 +205,28 @@ class LanePredictor:
         ret,output_bw = cv2.threshold(cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
         return output_bw
 
+    def getCurvedLaneMask(self,frame):
+        #From calibrated values: 
+
+        #Use LAB Colorspace s=1, Use RGB colorspace s=0:
+        s = 0
+
+        if s:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+
+        lpos, apos, bpos, lposH, aposH, bposH = 0, 0, 224, 255, 255, 255
+
+        lower_hsv = np.array([lpos, apos, bpos])
+        higher_hsv = np.array([lposH, aposH, bposH])
+        mask = cv2.inRange(frame, lower_hsv, higher_hsv)
+        output_img = cv2.bitwise_and(frame, frame, mask=mask)
+
+        if s:
+            output_img = cv2.cvtColor(output_img, cv2.COLOR_LAB2BGR)
+        
+        ret,output_bw = cv2.threshold(cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
+        return output_bw
+
 
     def setupLinevariabless(self):
         self.max_line_length = -float('inf')
@@ -220,7 +242,6 @@ class LanePredictor:
         """
         Detects straight Lanes in a given frame
         """
-        global fig, ax, lineL
 
         lanemask = self.getLaneMask(frame)
         height = lanemask.shape[0]
@@ -399,13 +420,63 @@ class LanePredictor:
 
         return cdstP, img
 
+    def get_end_pnts(self, pnts, img):
+        extremes = []    
+        for p in pnts:
+            x = p[0]
+            y = p[1]
+            n = 0
+            try:       
+                n += img[y - 1,x]
+                n += img[y - 1,x - 1]
+                n += img[y - 1,x + 1]
+                n += img[y,x - 1]    
+                n += img[y,x + 1]
+                n += img[y,x]
+                n += img[y + 1,x]    
+                n += img[y + 1,x - 1]
+                n += img[y + 1,x + 1]
+                n /= 255        
+                if n == 1:
+                    extremes.append(p)
+            except Exception:
+                continue
+        return extremes
 
     def detectCurvedLane(self,frame):
         """
         Detects Curvatures of Lanes in a given frame
         """
 
+        lanemask = self.getCurvedLaneMask(frame)
+        size = np.size(lanemask)
+        skel = np.zeros(lanemask.shape,np.uint8)
+        ret,img = cv2.threshold(lanemask,5,255,0)
+        # img = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+        # img = cv2.Canny(img, 2, 100, None, 7)
+        element = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+        done = False
+
+
+
+        while( not done):
+            eroded = cv2.erode(img,element)
+            temp = cv2.dilate(eroded,element)
+            temp = cv2.subtract(img,temp)
+            skel = cv2.bitwise_or(skel,temp)
+            img = eroded.copy()
+
+            zeros = size - cv2.countNonZero(img)
+            if zeros==size:
+                done = True
         
+        pnts = cv2.findNonZero(skel) #[1:-1,1:-1]
+        pnts = np.squeeze(pnts)
+        ext = self.get_end_pnts(pnts, skel)
+        for p in ext:
+            cv2.circle(skel, (p[0], p[1]), 5, 128)
+
+        cv2.imshow("lanemask",skel)
 
 
-        pass 
+        return frame 

@@ -93,15 +93,15 @@ def main():
         if ret:
             #-----------Problem 3: Predict Turn----------#
             frame  = cv2.resize(frame, (800,512))
-            lanePredictor.calibrateColor(frame)
-            # detections_img = lanePredictor.detectCurvedLane(frame)
+            # lanePredictor.calibrateColor(frame)
+            detections_img = lanePredictor.detectCurvedLane(frame)
             # imagegrid.set(0,1,frame,"Input image")
             # grid_img = imagegrid.generate(scale=400)
             # if isinstance(videoWriter, type(None)):
             #     videoWriter = cv2.VideoWriter(savepath+'challenge.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 10, (grid_img.shape[1],grid_img.shape[0]))  
             # videoWriter.write(grid_img)
-            cv2.imshow("detections_img", frame)
-            if cv2.waitKey(300) & 0xFF == ord('q'):
+            cv2.imshow("detections_img", detections_img)
+            if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
         else:
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
