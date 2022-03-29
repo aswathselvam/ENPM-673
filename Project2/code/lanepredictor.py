@@ -636,6 +636,22 @@ class LanePredictor:
 
         return frame 
 
+    def drawCircles(self,image,x_coords,y_coords,color=OLIVE):
+        for x,y in zip(x_coords,y_coords):
+            cv2.circle(image, (int(x),int(y)), 5, color, 3, cv2.LINE_AA)
+        return image
+
+    def getPlanePoints(self,exl,eyl):
+        H_inv = np.linalg.inv(self.H)
+        plane_pts=[]
+        for x,y in zip(exl,eyl):
+            [x,y,w]= H_inv@np.array([x,y,1])
+            x=x/w
+            y=y/w
+            plane_pts.append([x,y])
+        plane_pts = np.array([plane_pts],dtype=int)
+        plane_pts = np.squeeze(plane_pts)
+        return plane_pts
 
     def detectwithTopDownView(self, frame):
 
@@ -717,43 +733,62 @@ class LanePredictor:
         # Left side:
         left_half = skel[:,:skel.shape[1]//2]
         right_half = skel[:,skel.shape[1]//2:]
+        # cv2.imshow("left_half",left_half)
+        # cv2.imshow("right_half",right_half)
+
         left_half_coords = np.squeeze(np.dstack(np.where(left_half>60)))
         left_half_coords = left_half_coords[left_half_coords[:, 1].argsort()]
-        right_half_coords = np.squeeze(np.dstack(np.where(right_half>10)))
+        right_half_coords = np.squeeze(np.dstack(np.where(right_half>50)))
         right_half_coords = right_half_coords[right_half_coords[:, 1].argsort()]
+        right_half_coords[:,1] = right_half_coords[:,1]+left_half.shape[1]
        
-        Xl = lsqr(left_half_coords[:,1], left_half_coords[:,0])
-        Xr = lsqr(left_half.shape[1]+right_half_coords[:,1], right_half_coords[:,0])
+        # Equation x points, left lane
         exl = np.linspace(0, left_half.shape[1], 100)
-        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, 100)
-        eyl = Xl[0]*exl**2 + Xl[1]*exl + Xl[2]        
-        eyr = Xr[0]*exr**2 + Xr[1]*exr + Xr[2]        
+
+        # Equation x points, right lane
+        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, 500)
+
+        Xl = lsqr(left_half_coords[:,1], left_half_coords[:,0])
+        Xr = lsqr(right_half_coords[:,1], right_half_coords[:,0])
         
+        # Equation y points, left lane
+        eyl = Xl[0]*exl**2 + Xl[1]*exl + Xl[2]        
+        
+        # Equation y points, right lane
+        eyr = Xr[0]*exr**2 + Xr[1]*exr + Xr[2]
+
+        # cl = np.polynomial.polynomial.polyfit(left_half_coords[:,1], left_half_coords[:,0],1)       
+        # cr = np.polynomial.polynomial.polyfit(right_half_coords[:,1], right_half_coords[:,0],1)       
+        # fl = np.polynomial.polynomial.Polynomial(cl)
+        # fr = np.polynomial.polynomial.Polynomial(cr)
+        # eyl = fl(exl)
+        # eyr = fr(exr)
+
         eyl=np.array(eyl,dtype=int)
         eyr=np.array(eyr,dtype=int)
-        exl = np.concatenate((exr,exl))
-        eyl = np.concatenate((eyr,eyl))
 
+        #both left and right lanes:
+        bx = np.concatenate((exr,exl))
+        by = np.concatenate((eyr,eyl))
+
+        
         skel_color = cv2.cvtColor(skel,cv2.COLOR_GRAY2BGR)
-        for x,y in zip(exl,eyl):
-            cv2.circle(skel_color, (int(x),int(y)), 5, OLIVE, 3, cv2.LINE_AA)
+        skel_color = self.drawCircles(skel_color,bx,by,color=RED)
         cv2.imshow("skel_color",skel_color)
 
+        plane_pts_l=self.getPlanePoints(exl,eyl)
 
-        H_inv = np.linalg.inv(self.H)
+        original_frame = self.drawCircles(original_frame,plane_pts_l[:,0],plane_pts_l[:,1],color=RED)
 
-        plane_pts=[]
-        for x,y in zip(exl,eyl):
-            [x,y,w]= H_inv@np.array([x,y,1])
-            x=x/w
-            y=y/w
-            plane_pts.append([x,y])
-            cv2.circle(original_frame, (int(x),int(y)), 5, OLIVE, 3, cv2.LINE_AA)
+        plane_pts_r=self.getPlanePoints(exr,eyr)
+        
+        original_frame = self.drawCircles(original_frame,plane_pts_r[:,0],plane_pts_r[:,1],color=GREEN)
 
-        plane_pts= np.array([plane_pts],dtype=np.int32)
         mask = np.zeros_like(original_frame)
 
-        imColorLane = cv2.fillPoly(mask, plane_pts, (80,227, 227))
+        plane_pts = np.concatenate((plane_pts_l,plane_pts_r))
+        # plane_pts= np.array([plane_pts],dtype=np.int32)
+        imColorLane = cv2.fillPoly(mask, [plane_pts], (80,227, 227))
         imColorLane = cv2.addWeighted(original_frame,1,imColorLane,0.5,0)
 
         # cv2.fillConvexPoly(mask, plane_pts, 1)
