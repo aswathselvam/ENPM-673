@@ -3,7 +3,7 @@ from attr import NOTHING
 import cv2
 import numpy as np
 from sympy import continued_fraction
-from utils import ImageGrid, Plotter, MovingAverage
+from utils import ImageGrid, Plotter
 from preprocess import *
 import math 
 import matplotlib.pyplot as plt
@@ -19,6 +19,7 @@ GREEN = (0,255,0)
 YELLOW = (0,255,255)
 OLIVE = (0,128,128)
 ORCHID = (204,50,153)
+WHITE= (200,200,200)
 class LanePredictor:
 
     def __init__(self,data=None,video=None):
@@ -465,14 +466,14 @@ class LanePredictor:
                 continue
         return extremes
 
-    def detectCurvedLane(self,frame):
+    def getHomography(self,frame):
         """
         Detects Curvatures of Lanes in a given frame
         """
 
-        if not isinstance(self.H, type(None)):
-            self.detectwithTopDownView(frame)
-            return frame
+        # if not isinstance(self.H, type(None)):
+        #     lanemask,lanemasktd,lanemasktd_marking,back_proj_img,roc_img = self.detectCurvedLane(frame)
+        #     return lanemask,lanemasktd,lanemasktd_marking,back_proj_img,roc_img
 
         lanemask = self.getCurvedLaneMask(frame)
         element = cv2.getStructuringElement(cv2.MORPH_RECT,(2,2))
@@ -497,8 +498,8 @@ class LanePredictor:
         out[out_mask == 0] = 0
         lanemask = out
 
-        cv2.imshow("out",out)
-        cv2.waitKey(0)
+        # cv2.imshow("out",out)
+        # cv2.waitKey(0)
         # return frame
 
         height = lanemask.shape[0]
@@ -653,7 +654,7 @@ class LanePredictor:
                 continue
             self.ld[x].append(y)
             temp.append(np.average(self.ld[x]))
-        return temp
+        return np.array(temp,dtype=int)
 
     def drawCircles(self,image,x_coords,y_coords,color=OLIVE):
         for x,y in zip(x_coords,y_coords):
@@ -672,6 +673,19 @@ class LanePredictor:
         plane_pts = np.squeeze(plane_pts)
         return plane_pts
 
+    def findROC(self,x_coords,y_coords):
+        idx, delta = len(y_coords)//2,len(y_coords)//4
+
+        dy = y_coords[idx+delta] - y_coords[idx]
+        dx = x_coords[idx+delta] - x_coords[idx]
+
+        # Sample point distance: sp
+        sp = len(y_coords)//5
+        dy_ = y_coords[idx+delta+sp] - y_coords[idx+sp]
+        dy2 = dy_ - dy
+        roc= ((1+(dy/dx)**2)**1.5)/(dy2/dx)
+        return roc
+
     def detectwithTopDownView(self, frame):
 
         # self.calibrateColor(frame)
@@ -679,15 +693,15 @@ class LanePredictor:
         height = frame.shape[0]
         width = frame.shape[1]
 
-        frame = self.getCurvedLaneMask(frame,220)
-        lanemask = cv2.warpPerspective(frame, self.H,(height,width))
+        lanemask = self.getCurvedLaneMask(frame,220)
+        lanemasktd = cv2.warpPerspective(lanemask, self.H,(height,width))
         
         #'''
-        # _,lanemask = cv2.threshold(lanemask, 10, 255, cv2.THRESH_BINARY)
-        # skel = lanemask
+        # _,lanemasktd = cv2.threshold(lanemasktd, 10, 255, cv2.THRESH_BINARY)
+        # skel = lanemasktd
         #'''
 
-        frame = lanemask
+        frame = lanemasktd
         element = cv2.getStructuringElement(cv2.MORPH_CROSS,(2,2))
         done = False
         skel = np.zeros(frame.shape,np.uint8)
@@ -755,6 +769,7 @@ class LanePredictor:
         # Left side:
         left_half = skel[:,:skel.shape[1]//2]
         right_half = skel[:,skel.shape[1]//2:]
+        # print(left_half.shape)
         # cv2.imshow("left_half",left_half)
         # cv2.imshow("right_half",right_half)
 
@@ -770,7 +785,8 @@ class LanePredictor:
         exl = np.linspace(0, left_half.shape[1], NUM_PTS)
 
         # Equation x points, right lane
-        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, NUM_PTS)
+        exr = np.linspace(left_half.shape[1], int(left_half.shape[1]*2.2), NUM_PTS)
+        # exr = np.linspace(3*left_half.shape[1], left_half.shape[1], NUM_PTS)
 
         Xl = lsqr(left_half_coords[:,1], left_half_coords[:,0])
         Xr = lsqr(right_half_coords[:,1], right_half_coords[:,0])
@@ -809,14 +825,23 @@ class LanePredictor:
         eyr = self.updatefromHistory(exr,eyr)
 
         #Lane centers
-        # cx = (exl+2*exr)//2
-        # cy = (eyl+eyr)
+        # For each point in y, get the average of x 
+        cx = (exl+eyl)//2#np.ones_like(exl)*exl.shape
+        cy = (eyl)//1
         
         skel_color = cv2.cvtColor(skel,cv2.COLOR_GRAY2BGR)
-        skel_color = self.drawCircles(skel_color,bx,by,color=RED)
+        skel_color = self.drawCircles(skel_color,bx,by,color=ORCHID)
+        skel_color = self.drawCircles(skel_color,exl,eyl,color=RED)
+        skel_color = self.drawCircles(skel_color,exr,eyr,color=GREEN)
         # skel_color = self.drawCircles(skel_color,cx,cy,color=YELLOW)
+        polylinesl = np.squeeze(np.dstack((exl,eyl)))
+        polylinesr = np.squeeze(np.dstack((exr,eyr)))
+        skel_color = cv2.polylines(skel_color,  np.int32([polylinesl]),isClosed = False, color=RED,thickness =5)
+        skel_color = cv2.polylines(skel_color,  np.int32([polylinesr]),isClosed = False, color=GREEN,thickness =5)
+        # skel_color = cv2.polylines(skel_color, np.array(np.squeeze(np.dstack((exr,eyr))),dtype=int),isClosed = False, color=GREEN,thickness =5)
 
         cv2.imshow("skel_color",skel_color)
+        lanemasktd_marking = skel_color
 
         plane_pts_l=self.getPlanePoints(exl,eyl)
 
@@ -826,7 +851,7 @@ class LanePredictor:
         
         original_frame = self.drawCircles(original_frame,plane_pts_r[:,0],plane_pts_r[:,1],color=GREEN)
 
-        # plane_pts_c=self.getPlanePoints(cx,cy)
+        plane_pts_c=self.getPlanePoints(cx,cy)
         
         # original_frame = self.drawCircles(original_frame,plane_pts_c[:,0],plane_pts_c[:,1],color=YELLOW)
 
@@ -835,6 +860,9 @@ class LanePredictor:
         plane_pts = np.concatenate((plane_pts_l,plane_pts_r))
         # plane_pts= np.array([plane_pts],dtype=np.int32)
         imColorLane = cv2.fillPoly(mask, [plane_pts], (80,227, 227))
+        imColorLane = cv2.polylines(imColorLane, [plane_pts_l],isClosed = False, color=RED,thickness =5)
+        imColorLane = cv2.polylines(imColorLane, [plane_pts_r],isClosed = False, color=GREEN,thickness =5)
+
         imColorLane = cv2.addWeighted(original_frame,1,imColorLane,0.5,0)
 
         # cv2.fillConvexPoly(mask, plane_pts, 1)
@@ -844,18 +872,22 @@ class LanePredictor:
         # out_frame[mask] = original_frame[mask]
         cv2.imshow("original_frame",imColorLane)
 
+        back_proj_img = imColorLane
 
-        # idx, delta = 10,10
-        # dy = left_half_coords[idx+delta] - left_half_coords[idx]
-        # dx = left_half_coords[idx+delta] - left_half_coords[idx]
+        ROCleft = self.findROC(exl,eyl)
+        ROCright = self.findROC(exr,eyr)
 
-        # # Sample point distance sp
-        # sp = 10
-        # dy_ = left_half_coords[idx+delta+sp] - left_half_coords[idx+sp]
-        # dy2 = dy_ - dy
-        # Rleft= ((1+(dy/dx)**2)**1.5)/(dy2/dx)
+        roc_left_text = "ROC Left: " + str(round(ROCleft,2))
+        roc_right_text ="ROC Right: " + str(round(ROCright,2))
+        roc_img = np.zeros_like(original_frame)
+        cv2.putText(roc_img, roc_left_text, (roc_img.shape[0]//2-200,roc_img.shape[1]//3), \
+                        cv2.FONT_HERSHEY_COMPLEX,fontScale=0.71,color=WHITE,thickness=2,lineType=cv2.LINE_8 )
 
-        # print(left_half_coords)
-        # input()
-        # Find ROC with those points
+        cv2.putText(roc_img, roc_right_text,(roc_img.shape[0]//2+200,roc_img.shape[1]//3), \
+                        cv2.FONT_HERSHEY_COMPLEX,fontScale=0.71,color=WHITE,thickness=2,lineType=cv2.LINE_8 )
+
+        lanemask = cv2.cvtColor(lanemask,cv2.COLOR_GRAY2BGR)
+        lanemasktd = cv2.cvtColor(lanemasktd,cv2.COLOR_GRAY2BGR)
+        # lanemask = cv2.cvtColor(lanemask,cv2.COLOR_GRAY2BGR)
+        return lanemask,lanemasktd,lanemasktd_marking,back_proj_img,roc_img
 

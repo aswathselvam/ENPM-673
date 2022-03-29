@@ -86,29 +86,39 @@ def main():
     # return 
 
     cap = cv2.VideoCapture(video_challenge_path)
+    ret, frame = cap.read()
     videoWriter=None
     imagegrid=ImageGrid(2,3)
     while(True):
         ret, frame = cap.read()
-        if ret:
-            #-----------Problem 3: Predict Turn----------#
-            frame  = cv2.resize(frame, (800,512))
-            # lanePredictor.calibrateColor(frame)
-            detections_img = lanePredictor.detectCurvedLane(frame)
-            # imagegrid.set(0,1,frame,"Input image")
-            # grid_img = imagegrid.generate(scale=400)
-            # if isinstance(videoWriter, type(None)):
-            #     videoWriter = cv2.VideoWriter(savepath+'challenge.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 10, (grid_img.shape[1],grid_img.shape[0]))  
-            # videoWriter.write(grid_img)
-            cv2.imshow("detections_img", detections_img)
-            if cv2.waitKey(100) & 0xFF == ord('q'):
-                break
-        else:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            # videoWriter.release()
-            # break    
+        if not ret:
+            videoWriter.release()
+            break  
+        
+        #-----------Problem 3: Predict Turn----------#
+        frame  = cv2.resize(frame, (800,512))
+        # lanePredictor.calibrateColor(frame)
+        if isinstance(lanePredictor.H, type(None)):
+            detections_img = lanePredictor.getHomography(frame)
+            continue
+        lanemask,lanemasktd,lanemasktd_marking,back_proj_img,roc_img  = lanePredictor.detectwithTopDownView(frame)
+        imagegrid.set(0,0,frame,"1) Input image")
+        imagegrid.set(0,1,lanemask,"2) Lanemask")
+        imagegrid.set(0,2,lanemasktd,"3)Top down")
+        imagegrid.set(1,0,lanemasktd_marking,"4) Top down marking")
+        imagegrid.set(1,1,back_proj_img,"5) Back projection")
+        imagegrid.set(1,2,roc_img,"6) Radius of Curvature")
+
+        grid_img = imagegrid.generate(scale=400)
+        if isinstance(videoWriter, type(None)):
+            videoWriter = cv2.VideoWriter(savepath+'challenge.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 10, (grid_img.shape[1],grid_img.shape[0]))  
+        videoWriter.write(grid_img)
+        cv2.imshow("detections_img", detections_img)
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            videoWriter.release()
+            break
     
-    cap.release()
+    # cap.release()
 
 if __name__ == '__main__':
     main()

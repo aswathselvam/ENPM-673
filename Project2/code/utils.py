@@ -31,8 +31,12 @@ class ImageGrid():
                 if not (row,col) in self.images:
                     image=np.zeros([100,100,3],dtype=np.uint8)
                     self.titles[row,col] = ""
-                aspect_ratio=image.shape[1]//image.shape[0] # Height/Width
-                col_img = cv2.resize(image, (scale*aspect_ratio,scale))
+                if image.shape[1]<image.shape[0]:
+                    aspect_ratio=image.shape[1]//image.shape[0] # Height/Width
+                else:
+                    aspect_ratio=image.shape[1]//image.shape[0] # Height/Width
+                # print(scale*aspect_ratio,scale)
+                col_img = cv2.resize(image, (scale,scale))
                 cv2.putText(col_img,self.titles[row,col], (0,30), \
                     cv2.FONT_HERSHEY_COMPLEX,fontScale=0.71,color=(0,0,0),thickness=3,lineType=cv2.LINE_8 )
                 cv2.putText(col_img,self.titles[row,col], (0,30), \
@@ -70,33 +74,3 @@ class Plotter():
     def plot(self, line, x,y):
         line.set_data(x,y)
         self.fig.canvas.draw()
-
-class MovingAverage:
-    def __init__(self, window_size):
-
-        self.window_size_ = window_size
-        self.values_ = []
-        self.average_ = 0
-
-    def add_values(self, points):
-
-        if len(self.values_) < self.window_size_:
-            self.values_.append(points)
-
-        else:
-            self.values_.pop(0)
-            self.values_.append(points)
-
-    def getmean(self):
-        values = self.values_
-        values = np.array(values)
-        sum = np.sum(values, axis = 0)
-        self.average_ = (sum / len(self.values_)).astype(np.int32)
-        
-        if len(self.values_) < self.window_size_:
-            return values[-1]
-        else:
-            return self.average_
-
-    def __len__(self): 
-        return len(self.values_)
