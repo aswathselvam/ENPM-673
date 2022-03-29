@@ -662,11 +662,14 @@ class LanePredictor:
 
         frame = self.getCurvedLaneMask(frame,220)
         lanemask = cv2.warpPerspective(frame, self.H,(height,width))
+        
+        #'''
+        # _,lanemask = cv2.threshold(lanemask, 10, 255, cv2.THRESH_BINARY)
+        # skel = lanemask
+        #'''
+
         frame = lanemask
-
-
-        element = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-
+        element = cv2.getStructuringElement(cv2.MORPH_CROSS,(2,2))
         done = False
         skel = np.zeros(frame.shape,np.uint8)
         size = np.size(frame)
@@ -736,9 +739,9 @@ class LanePredictor:
         # cv2.imshow("left_half",left_half)
         # cv2.imshow("right_half",right_half)
 
-        left_half_coords = np.squeeze(np.dstack(np.where(left_half>60)))
+        left_half_coords = np.squeeze(np.dstack(np.where(left_half>80)))
         left_half_coords = left_half_coords[left_half_coords[:, 1].argsort()]
-        right_half_coords = np.squeeze(np.dstack(np.where(right_half>50)))
+        right_half_coords = np.squeeze(np.dstack(np.where(right_half>80)))
         right_half_coords = right_half_coords[right_half_coords[:, 1].argsort()]
         right_half_coords[:,1] = right_half_coords[:,1]+left_half.shape[1]
        
@@ -746,7 +749,7 @@ class LanePredictor:
         exl = np.linspace(0, left_half.shape[1], 100)
 
         # Equation x points, right lane
-        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, 500)
+        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, 100)
 
         Xl = lsqr(left_half_coords[:,1], left_half_coords[:,0])
         Xr = lsqr(right_half_coords[:,1], right_half_coords[:,0])
@@ -770,10 +773,15 @@ class LanePredictor:
         #both left and right lanes:
         bx = np.concatenate((exr,exl))
         by = np.concatenate((eyr,eyl))
-
+        
+        #Lane centers
+        # cx = (exl+2*exr)//2
+        # cy = (eyl+eyr)
         
         skel_color = cv2.cvtColor(skel,cv2.COLOR_GRAY2BGR)
         skel_color = self.drawCircles(skel_color,bx,by,color=RED)
+        # skel_color = self.drawCircles(skel_color,cx,cy,color=YELLOW)
+
         cv2.imshow("skel_color",skel_color)
 
         plane_pts_l=self.getPlanePoints(exl,eyl)
@@ -783,6 +791,10 @@ class LanePredictor:
         plane_pts_r=self.getPlanePoints(exr,eyr)
         
         original_frame = self.drawCircles(original_frame,plane_pts_r[:,0],plane_pts_r[:,1],color=GREEN)
+
+        # plane_pts_c=self.getPlanePoints(cx,cy)
+        
+        # original_frame = self.drawCircles(original_frame,plane_pts_c[:,0],plane_pts_c[:,1],color=YELLOW)
 
         mask = np.zeros_like(original_frame)
 
