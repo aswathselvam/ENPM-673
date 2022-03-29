@@ -3,10 +3,12 @@ from attr import NOTHING
 import cv2
 import numpy as np
 from sympy import continued_fraction
-from utils import ImageGrid, Plotter
+from utils import ImageGrid, Plotter, MovingAverage
 from preprocess import *
 import math 
 import matplotlib.pyplot as plt
+from collections import defaultdict
+
 
 from sympy import Matrix
 from sympy import *
@@ -30,7 +32,10 @@ class LanePredictor:
         self.lineposPlotter = None
         self.colorCalibrationInitialized = False
         self.setupLinevariabless()
-
+        self.mvl = MovingAverage(10)
+        self.mvr = MovingAverage(10)
+        self.ld = defaultdict(list)
+        self.rd = defaultdict(list)
 
     def histogram(self, im_flat):
         # RANGE=256
@@ -636,6 +641,20 @@ class LanePredictor:
 
         return frame 
 
+    def updatefromHistory(self,ex,ey):
+        temp=[]
+        thresh = 100
+        for x,y in zip(ex,ey):
+            if len(self.ld[x])>30:
+                self.ld[x].pop(0)
+            avg = np.average(self.ld[x])
+            if (abs(avg - y) > thresh):
+                temp.append(np.average(self.ld[x]))
+                continue
+            self.ld[x].append(y)
+            temp.append(np.average(self.ld[x]))
+        return temp
+
     def drawCircles(self,image,x_coords,y_coords,color=OLIVE):
         for x,y in zip(x_coords,y_coords):
             cv2.circle(image, (int(x),int(y)), 5, color, 3, cv2.LINE_AA)
@@ -745,11 +764,13 @@ class LanePredictor:
         right_half_coords = right_half_coords[right_half_coords[:, 1].argsort()]
         right_half_coords[:,1] = right_half_coords[:,1]+left_half.shape[1]
        
+        NUM_PTS = 10
+
         # Equation x points, left lane
-        exl = np.linspace(0, left_half.shape[1], 100)
+        exl = np.linspace(0, left_half.shape[1], NUM_PTS)
 
         # Equation x points, right lane
-        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, 100)
+        exr = np.linspace(left_half.shape[1], left_half.shape[1]*2, NUM_PTS)
 
         Xl = lsqr(left_half_coords[:,1], left_half_coords[:,0])
         Xr = lsqr(right_half_coords[:,1], right_half_coords[:,0])
@@ -773,7 +794,20 @@ class LanePredictor:
         #both left and right lanes:
         bx = np.concatenate((exr,exl))
         by = np.concatenate((eyr,eyl))
+
+        # Keeping track of history of predictions
+        # no_bins = 6
+        # bins = np.linspace(0,left_half.shape[0],no_bins)
+        # l_bin_idx = np.digitize(eyl, bins, right=False)
+        # l_bin_history  = []
+
+        # Create a dictionary with key as x axis and y as array of values
+        # at timesteps t
         
+        
+        eyl = self.updatefromHistory(exl,eyl)
+        eyr = self.updatefromHistory(exr,eyr)
+
         #Lane centers
         # cx = (exl+2*exr)//2
         # cy = (eyl+eyr)
