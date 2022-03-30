@@ -115,7 +115,7 @@ class LanePredictor:
                 gridimages[titles[1]]=np.uint8(im_eqs)
 
             if mode==self.ADAPTIVE_HISTOGRAM_EQUALIZATION or BOTH:
-                im_eqs = self.adjustGamma(image, gamma = 2.0)
+                im_eqs = self.adjustGamma(image, gamma = 1.5)
                 # cv2.imshow("Adaptive Equalilzed Image", np.uint8(im_eqs))
                 # cv2.waitKey(50)
                 gridimages[titles[2]]=np.uint8(im_eqs)
