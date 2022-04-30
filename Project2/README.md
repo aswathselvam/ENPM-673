@@ -12,7 +12,9 @@ pip3 install -r requirements.txt
 ### Run the code:
 ```bash
 cd code
-python3 solution.py
+python3 solution.py --problem 1
+python3 solution.py --problem 2
+python3 solution.py --problem 3
 ```
 - [lanepredictor.py](code/lanepredictor.py) contains Class and Memeber functions used for making Lane Predictions.
 

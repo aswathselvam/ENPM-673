@@ -12,10 +12,7 @@ pip3 install -r requirements.txt
 ### Run the code:
 ```bash
 cd code
-python3 solution.py --problem 1
-python3 solution.py --problem 2
-python3 solution.py --problem 3
-python3 solution.py --problem 4
+python3 solution.py
 ```
 - [libs.py](code/libs.py) contains Class and Memeber functions used for computing depth.
 
