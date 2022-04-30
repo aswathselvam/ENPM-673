@@ -18,14 +18,6 @@ python3 solution.py
 
 
 ## Outputs:
-### Problem 1:
-Histogram Equalization
-![Histogram Equalization](outputs/histogram_equalization.png)
-
-### Problem 2:
-Straight Lane Detection:
-![ARCode Decoding](outputs/straight_lane_detection.png)
-
-### Problem 3:
-Curved Lane Detection:
-![ARCode Decoding](outputs/curved_lane_detection.png)
+![Image](./outputs/curule_rectified.jpg)
+![Image](./outputs/disparity_image_heat_curule.png)
+![Image](./outputs/octagon_disparity_image_heat.png)
